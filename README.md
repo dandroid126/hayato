@@ -1,1 +1,1 @@
-# hayato
+# HAYATO bot for utapri server

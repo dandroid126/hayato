@@ -2,6 +2,9 @@ import asyncio
 import threading
 from datetime import datetime
 from typing import Final
+from tzlocal import get_localzone
+
+from discord import Client
 
 from src import constants, logger
 from src.db.announcements.announcements_dao import AnnouncementsDao
@@ -13,9 +16,9 @@ SLEEP_DELAY: Final = 60  # One minute
 
 
 class AnnouncementsUtil:
-    def __init__(self, bot):
+    def __init__(self, client: Client):
         self.is_running = False
-        self.bot = bot
+        self.client = client
         self.start()
 
     def start(self):
@@ -39,8 +42,8 @@ class AnnouncementsUtil:
                 continue
             for announcement in announcements:
                 logger.d(TAG, f"announcement: {announcement}")
-                if announcement.time < datetime.now():
-                    channel = self.bot.get_channel(announcement.channel)
+                if announcement.time < datetime.now(get_localzone()):
+                    channel = self.client.get_channel(announcement.channel)
                     # TODO: add try/catch
                     if channel is not None:
                         asyncio.run_coroutine_threadsafe(channel.send(announcement.message), loop)
@@ -49,6 +52,6 @@ class AnnouncementsUtil:
         logger.i(TAG, "AnnouncementsUtil stopped")
         # TODO: This is some serious spaghetti code. It solves the problem of not being able to close the bot on an interrupt because signal_util captures it instead of it going to the bot,
         #  But this really should not be done this way. There needs to be a way to have multiple threads listening for the interrupt signal to shut down gracefully.
-        asyncio.run_coroutine_threadsafe(self.bot.close(), loop)
+        asyncio.run_coroutine_threadsafe(self.client.close(), loop)
 
 

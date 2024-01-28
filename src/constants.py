@@ -6,5 +6,7 @@ DIR_PATH: Final = f"{os.path.dirname(SCRIPT_PATH)}/../"
 OUT_PATH: Final = f"{DIR_PATH}/out/"
 COMMAND_PREFIX: Final = "&"
 
+DB_PATH: Final = f"{OUT_PATH}/hayato.db"
+
 # Usages
 # POINTS_USAGE = f"{COMMAND_PREFIX}points [add|total] <number...>"

@@ -1,7 +1,7 @@
 import logging
+import os
 import sys
 from logging.handlers import RotatingFileHandler
-import os
 from typing import Final
 
 import src.constants as constants

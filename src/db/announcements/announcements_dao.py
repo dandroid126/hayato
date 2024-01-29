@@ -13,6 +13,7 @@ from src.db.db_manager import DbManager, db_manager
 # COLUMN_TIME = 'time'
 # COLUMN_CHANNEL = 'channel'
 # COLUMN_MESSAGE = 'message'
+# COLUMN_ATTACHMENT_URL = 'attachment_url'
 
 TAG = "AnnouncementsDao"
 
@@ -27,7 +28,7 @@ class AnnouncementsDao:
         logger.i(TAG, f"get_announcement_by_id(): executing {query} with params {params}")
         val = self.db_manager.cursor.execute(query, params).fetchone()
         if val is not None:
-            return AnnouncementsRecord(val[0], parser.parse(val[1]), val[2], val[3])
+            return AnnouncementsRecord(val[0], parser.parse(val[1]), val[2], val[3], val[4])
         return None
 
     def get_all_announcements(self) -> list[AnnouncementsRecord]:
@@ -36,17 +37,17 @@ class AnnouncementsDao:
         vals = self.db_manager.cursor.execute(query).fetchall()
         out = []
         for val in vals:
-            out.append(AnnouncementsRecord(val[0], parser.parse(val[1]), val[2], val[3]))
+            out.append(AnnouncementsRecord(val[0], parser.parse(val[1]), val[2], val[3], val[4]))
         return out
 
-    def schedule_announcement(self, time: datetime, channel: int, message: str) -> Optional[AnnouncementsRecord]:
-        query = "INSERT INTO announcements(time, channel, message) VALUES(?, ?, ?) RETURNING *"
-        params = (time, channel, message)
+    def schedule_announcement(self, time: datetime, channel: int, message: str, attachment: Optional[str]) -> Optional[AnnouncementsRecord]:
+        query = "INSERT INTO announcements(time, channel, message, attachment_url) VALUES(?, ?, ?, ?) RETURNING *"
+        params = (time, channel, message, attachment)
         logger.i(TAG, f"schedule_announcement(): executing {query} with params {params}")
         val = self.db_manager.cursor.execute(query, params).fetchone()
         self.db_manager.connection.commit()
         if val is not None:
-            return AnnouncementsRecord(val[0], parser.parse(val[1]), val[2], val[3])
+            return AnnouncementsRecord(val[0], parser.parse(val[1]), val[2], val[3], val[4])
         return None
 
     def delete_announcement_by_id(self, row_id: int):
@@ -56,7 +57,7 @@ class AnnouncementsDao:
         val = self.db_manager.cursor.execute(query, params).fetchone()
         self.db_manager.connection.commit()
         if val is not None:
-            return AnnouncementsRecord(val[0], parser.parse(val[1]), val[2], val[3])
+            return AnnouncementsRecord(val[0], parser.parse(val[1]), val[2], val[3], val[4])
         return None
 
 

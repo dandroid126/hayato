@@ -53,7 +53,8 @@ class DbManager:
                 id INTEGER PRIMARY KEY NOT NULL,
                 time TEXT NOT NULL,
                 channel INTEGER NOT NULL,
-                message TEXT NOT NULL
+                message TEXT NOT NULL,
+                attachment_url TEXT
             )
             """
         )

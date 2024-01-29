@@ -47,6 +47,7 @@ class AnnouncementsUtil:
                     # TODO: add try/catch
                     if channel is not None:
                         asyncio.run_coroutine_threadsafe(channel.send(announcement.message), loop)
+                        asyncio.run_coroutine_threadsafe(channel.send(announcement.attachment_url), loop)
                         announcements_dao.delete_announcement_by_id(announcement.id)
             signal_util.wait(SLEEP_DELAY)
         logger.i(TAG, "AnnouncementsUtil stopped")

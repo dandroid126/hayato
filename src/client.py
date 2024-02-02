@@ -63,8 +63,9 @@ def get_channel_id(channel: str) -> int:
 @tree.command(
     name="ping",
     description="ping",
-    guilds=guild_objects
+    guilds=guild_objects,
 )
+@app_commands.default_permissions(administrator=True)
 async def ping(interaction: Interaction):
     logger.d(TAG, "ping:")
     await send_wrapper(interaction, 'pong')
@@ -75,6 +76,7 @@ async def ping(interaction: Interaction):
     description="say",
     guilds=guild_objects
 )
+@app_commands.default_permissions(administrator=True)
 async def say(interaction: Interaction, channel: str, message: str, attachment: Optional[discord.Attachment] = None):
     logger.d(TAG, f"say: channel: {channel}, message: {message}, attachment: {attachment}")
     try:
@@ -98,6 +100,7 @@ async def say(interaction: Interaction, channel: str, message: str, attachment: 
     description="schedule_announcement",
     guilds=guild_objects
 )
+@app_commands.default_permissions(administrator=True)
 async def schedule_announcement(interaction: Interaction, time: str, channel: str, message: str, attachment: Optional[discord.Attachment] = None):
     logger.d(TAG, f"schedule_announcement: time: {time}, channel: {channel} message: {message}, attachment: {attachment.url if attachment else 'None'}")
     try:
@@ -121,6 +124,7 @@ async def schedule_announcement(interaction: Interaction, time: str, channel: st
     description="cancel_announcement",
     guilds=guild_objects
 )
+@app_commands.default_permissions(administrator=True)
 async def cancel_announcement(interaction: Interaction, id: int):
     logger.d(TAG, f"cancel_announcement: id: {id}")
     announcement = announcements_dao.delete_announcement_by_id(id)
@@ -135,6 +139,7 @@ async def cancel_announcement(interaction: Interaction, id: int):
     description="view_scheduled_announcements",
     guilds=guild_objects
 )
+@app_commands.default_permissions(administrator=True)
 async def view_scheduled_announcements(interaction: Interaction):
     logger.d(TAG, "view_scheduled_announcements:")
     announcements = announcements_dao.get_all_announcements()
@@ -143,11 +148,13 @@ async def view_scheduled_announcements(interaction: Interaction):
     for announcement in announcements:
         await send_wrapper(channel, announcement)
 
+
 @tree.command(
     name="view_announcement_by_id",
     description="view_announcement_by_id",
     guilds=guild_objects
 )
+@app_commands.default_permissions(administrator=True)
 async def view_scheduled_announcement_by_id(interaction: Interaction, id: int):
     logger.d(TAG, f"view_scheduled_announcement_by_id: id: {id}")
     announcement = announcements_dao.get_announcement_by_id(id)

@@ -18,6 +18,11 @@ TAG = "client.py"
 
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
+GUILD_IDS = os.getenv('GUILD_IDS').split(",")
+
+guild_objects = []
+for guild_id in GUILD_IDS:
+    guild_objects.append(discord.Object(id=guild_id))
 
 if TOKEN is None:
     raise LoggedRuntimeError(TAG, "TOKEN not found. Check that .env file exists in src dir and that its contents are correct")
@@ -38,10 +43,27 @@ async def send_wrapper(sender: Interaction | GuildChannel, text: str, attachment
         if attachment_url is not None:
             await sender.send(attachment_url)
 
+
+def get_channel_id(channel: str) -> int:
+    logger.d(TAG, f"get_channel_id: channel: {channel}")
+    if channel.startswith("#"):
+        logger.d(TAG, f"get_channel_id: channel starts with #. Removing it.")
+        channel = channel[1:]
+    if channel.startswith("<#") and channel.endswith(">"):
+        logger.d(TAG, f"get_channel_id: channel starts with <# and ends with >. Removing them.")
+        return int(channel[2:-1])
+    resolved_channel = discord.utils.get(client.get_all_channels(), name=channel)
+    if resolved_channel is not None:
+        logger.d(TAG, f"get_channel_id: successfully resolved channel. resolved_channel: {resolved_channel}")
+        return resolved_channel.id
+    else:
+        raise LoggedRuntimeError(TAG, f"Could not find the specified channel: {channel}. Check the channel name and try again.")
+
+
 @tree.command(
     name="ping",
     description="ping",
-    guild=discord.Object(391427484702212103)
+    guilds=guild_objects
 )
 async def ping(interaction: Interaction):
     logger.d(TAG, "ping:")
@@ -51,14 +73,14 @@ async def ping(interaction: Interaction):
 @tree.command(
     name="say",
     description="say",
-    guild=discord.Object(391427484702212103)
+    guilds=guild_objects
 )
 async def say(interaction: Interaction, channel: str, message: str, attachment: Optional[discord.Attachment] = None):
     logger.d(TAG, f"say: channel: {channel}, message: {message}, attachment: {attachment}")
     try:
-        channel_int = int(channel)
-        logger.d(TAG, f"say: successfully casted channel to an int. channel_int: {channel_int}")
-        guild_channel = await client.fetch_channel(channel_int)
+        channel_id = get_channel_id(channel)
+        logger.d(TAG, f"say: successfully got channel id. channel_id: {channel_id}")
+        guild_channel = await client.fetch_channel(channel_id)
         await send_wrapper(interaction, f"sending message to channel: {guild_channel}")
         await send_wrapper(guild_channel, message, attachment.url if attachment else None)
     except ValueError as e:
@@ -67,42 +89,78 @@ async def say(interaction: Interaction, channel: str, message: str, attachment: 
     except NotFound as e:
         logger.e(TAG, e, f"say: failed to cast channel to an int. channel: {channel}")
         await send_wrapper(interaction, f"Could not find the specified channel: {channel}. Check the channel ID and try again.")
+    except LoggedRuntimeError:
+        await send_wrapper(interaction, f"Could not find the specified channel: {channel}. Check the channel name and try again.")
 
 
 @tree.command(
     name="schedule_announcement",
     description="schedule_announcement",
-    guild=discord.Object(391427484702212103)
+    guilds=guild_objects
 )
 async def schedule_announcement(interaction: Interaction, time: str, channel: str, message: str, attachment: Optional[discord.Attachment] = None):
     logger.d(TAG, f"schedule_announcement: time: {time}, channel: {channel} message: {message}, attachment: {attachment.url if attachment else 'None'}")
-
     try:
         parsed_time = parser.parse(time)
         if parsed_time.tzinfo is None:
             parsed_time = constants.JST.localize(parsed_time)
         # TODO: validate time parse
 
-        channel_int = int(channel)
-        logger.d(TAG, f"schedule_announcement: successfully casted channel to an int. channel_int: {channel_int}")
-        await client.fetch_channel(channel_int)
-        announcement = announcements_dao.schedule_announcement(parsed_time, channel_int, message, attachment.url if attachment else None)
+        channel_id = get_channel_id(channel)
+        logger.d(TAG, f"schedule_announcement: successfully casted channel to an int. channel_id: {channel_id}")
+        await client.fetch_channel(channel_id)
+        announcement = announcements_dao.schedule_announcement(parsed_time, channel_id, message, attachment.url if attachment else None)
         await send_wrapper(interaction, f"Will send the message at time: {parsed_time}. Announcement details: {announcement}")
     except ValueError as e:
-        logger.e(TAG, e, f"schedule_announcement: failed to cast channel to an int. channel: {channel}")
-        await send_wrapper(interaction, f"Could not find the specified channel: {channel}. Check the channel ID and try again. Announcement was not scheduled.")
+        logger.e(TAG, e, f"schedule_announcement: failed to parse time. time provided: {time}")
+        await send_wrapper(interaction, f"Was not able to parse the provided time: {time}. Check the entered value and try again. Announcement was not scheduled.")
 
 
-# TODO: cancel announcement
+@tree.command(
+    name="cancel_announcement",
+    description="cancel_announcement",
+    guilds=guild_objects
+)
+async def cancel_announcement(interaction: Interaction, id: int):
+    logger.d(TAG, f"cancel_announcement: id: {id}")
+    announcement = announcements_dao.delete_announcement_by_id(id)
+    if announcement is None:
+        await send_wrapper(interaction, f"Could not find an announcement with the specified id: {id}.")
+        return
+    await send_wrapper(interaction, f"Announcement was canceled: {announcement}")
 
-# TODO: view all scheduled announcements
 
-# TODO: view scheduled announcement by id
+@tree.command(
+    name="view_scheduled_announcements",
+    description="view_scheduled_announcements",
+    guilds=guild_objects
+)
+async def view_scheduled_announcements(interaction: Interaction):
+    logger.d(TAG, "view_scheduled_announcements:")
+    announcements = announcements_dao.get_all_announcements()
+    await send_wrapper(interaction, f"Found {len(announcements)} scheduled announcements:")
+    channel = interaction.channel
+    for announcement in announcements:
+        await send_wrapper(channel, announcement)
+
+@tree.command(
+    name="view_announcement_by_id",
+    description="view_announcement_by_id",
+    guilds=guild_objects
+)
+async def view_scheduled_announcement_by_id(interaction: Interaction, id: int):
+    logger.d(TAG, f"view_scheduled_announcement_by_id: id: {id}")
+    announcement = announcements_dao.get_announcement_by_id(id)
+    if announcement is None:
+        await send_wrapper(interaction, f"Could not find an announcement with the specified id: {id}.")
+        return
+    await send_wrapper(interaction, f"Found announcement: {announcement}")
 
 
 @client.event
 async def on_ready():
-    await tree.sync(guild=discord.Object(id=391427484702212103))
+    for guild in guild_objects:
+        await tree.sync(guild=guild)
     announcements_util = AnnouncementsUtil(client)
     logger.d(TAG, f"on_ready: announcements_util.is_started: {announcements_util.is_running}")
     # TODO: Add something like this once there is a way to have multiple threads listening for the interrupt signal.

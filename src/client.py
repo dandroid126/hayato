@@ -141,7 +141,11 @@ async def view_scheduled_announcement_by_id(interaction: discord.Interaction, an
 
 @client.event
 async def on_message(message):
+    if not any(message.guild.id == guild.id for guild in guild_objects):
+        logger.d(TAG, f"on_message: message.guild.id: {message.guild.id} not in guild_objects: {guild_objects}")
+        return
     if message.author == client.user:
+        logger.d(TAG, f"on_message: message.author == client.user: {message.author == client.user}")
         return
     msg = message.content
     response = responses.get_response(msg)

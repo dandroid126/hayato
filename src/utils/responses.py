@@ -2,16 +2,16 @@ import random
 from typing import Optional
 import re
 
-import src.logger as logger
-
 TAG = "responses.py"
 
 _boy_names = ["otoya", "masato", "tokiya", "syo", "ren", "natsuki", "cecil", "reiji", "ranmaru", "ai", "camus", "eiji", "yamamoto", "van", "eichi", "shion", "nagi", "kira"]
 
-i_love = "i love"
-i_love_regex = re.compile(".*" + i_love + r" (\w+).*", re.IGNORECASE)
-
-_keyword_lists = [[i_love], ["ohayaho"], ["69"], ["are you ready?"], ["download link", "hand cam", "record stream", "stream recording", "for free"]]
+_keyword_lists = [
+    [re.compile(fr"i love ({'|'.join(_boy_names)})", re.IGNORECASE)],
+    ["ohayaho"],
+    [re.compile(r"(?<!\d)69(?!\d)"), re.compile(r"^nice\.$", re.IGNORECASE)],
+    ["are you ready?"],
+    ["download link", "hand cam", "record stream", "stream recording", "for free"]]
 
 _i_love_responses = ["loves you, too!"]
 _ohayoho_responses = ["OHAYAHO!!!!!"]
@@ -35,29 +35,18 @@ def get_response(message: str) -> Optional[str]:
     if message is None:
         return None
 
-    # Iterate through each keyword list
     for index, keyword_list in enumerate(_keyword_lists):
-        # Check if any keyword in the list is in the lowercase message
-        match = next((keyword for keyword in keyword_list if keyword in message.lower()), False)
-        # If no match, continue to the next keyword list
-        if not match:
-            continue
-        # If the match is "i_love"
-        if match == i_love:
-            # Try to match the message with the "i_love" regex
-            regex_matches = i_love_regex.match(message)
-            # If there is a regex match
-            if regex_matches:
-                try:
-                    # Get the index of the matched boy name in the list
-                    index = _boy_names.index(regex_matches.group(1).lower())
-                    # Return a response with the capitalized boy name and a random "i_love" response
-                    return f"{_boy_names[index].capitalize()} {random.choice(_i_love_responses)}"
-                except ValueError:
-                    # Log an error if the boy name is not found
-                    logger.d(TAG, f"get_response(): boy name not found: {regex_matches.group(0)}")
-                    return None
-        else:
-            # Return a random response from the response list corresponding to the matched keyword list index
-            return random.choice(response_list[index])
+        for keyword in keyword_list:
+            if isinstance(keyword, str):
+                if keyword in message.lower():
+                    return random.choice(response_list[index])
+            elif type(keyword) is re.Pattern:
+                match = keyword.search(message.lower())
+                if not match:
+                    continue
+                # TODO: this is kind of lazy. Figure out a better way to do this, because if more than one keyword uses groups, it will not work
+                if hasattr(match, "groups") and len(match.groups()) > 0:
+                    return f"{match.group(1).capitalize()} {random.choice(response_list[index])}"
+                else:
+                    return random.choice(response_list[index])
     return None

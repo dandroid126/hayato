@@ -93,6 +93,34 @@ class TestResponses(unittest.TestCase):
         # TODO: figure out how to test this for more than one response
         self.assertEqual(response, "Otoya loves you, too!")
 
+    def test_i_love_hayato(self):
+        provided = "i love hayato"
+        response = responses.get_response(provided)
+        logger.d(TAG, f"provided: {provided}, response: {response}")
+        self.assertIn(response, responses._i_love_hayato_responses)
+
+        provided = "I LOVE HAYATO"
+        response = responses.get_response(provided)
+        logger.d(TAG, f"provided: {provided}, response: {response}")
+        self.assertIn(response, responses._i_love_hayato_responses)
+
+        provided = "I love Hayato"
+        response = responses.get_response(provided)
+        logger.d(TAG, f"provided: {provided}, response: {response}")
+        self.assertIn(response, responses._i_love_hayato_responses)
+
+        provided = "I love Hayato!"
+        response = responses.get_response(provided)
+        logger.d(TAG, f"provided: {provided}, response: {response}")
+        self.assertIn(response, responses._i_love_hayato_responses)
+
+    def test_starish_forever(self):
+        provided = "starish forever"
+        response = responses.get_response(provided)
+        logger.d(TAG, f"provided: {provided}, response: {response}")
+        self.assertIn(response, responses._starish_forever_responses)
+
+
 
 if __name__ == '__main__':
     unittest.main()

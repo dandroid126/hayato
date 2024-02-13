@@ -11,15 +11,21 @@ _keyword_lists = [
     ["ohayaho"],
     [re.compile(r"(?<!\d)69(?!\d)"), re.compile(r"^nice\.$", re.IGNORECASE)],
     ["are you ready?"],
-    ["download link", "hand cam", "record stream", "stream recording", "for free"]]
+    ["download link", "hand cam", "record stream", "stream recording", "download for free"],
+    ["hayato jump scare"],
+    ["i love hayato", "i love you, hayato", "i love you hayato"],
+    ["starish forever"]]
 
 _i_love_responses = ["loves you, too!"]
 _ohayoho_responses = ["OHAYAHO!!!!!"]
 _sixty_nine_responses = ["nice."]
 _are_you_ready_responses = ["10! ARE YOU READY?"]
 _piracy_responses = ["OHAYAHO! Please support the series by legal means!"]
+_jump_scare_responses = ["HAYATO is always watching.", "<:hayato:1206817126959161394>"]
+_i_love_hayato_responses = ["I LOVE YOU, TOO!", "AWWW, THANKS! HAYATO LOVES YOU, TOO!", "<:hayato:1206817126959161394>"]
+_starish_forever_responses = ["WE ARE AND YOU ARE ST☆RISH!"]
 
-response_list = [_i_love_responses, _ohayoho_responses, _sixty_nine_responses, _are_you_ready_responses, _piracy_responses]
+response_list = [_i_love_responses, _ohayoho_responses, _sixty_nine_responses, _are_you_ready_responses, _piracy_responses, _jump_scare_responses, _i_love_hayato_responses, _starish_forever_responses]
 
 
 def get_response(message: str) -> Optional[str]:

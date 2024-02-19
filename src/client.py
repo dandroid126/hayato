@@ -139,6 +139,32 @@ async def view_scheduled_announcement_by_id(interaction: discord.Interaction, an
     await send_wrapper(interaction, f"Found announcement: {announcement}")
 
 
+@tree.command(
+    name="reload_responses",
+    description="Reload the responses file",
+    guilds=guild_objects
+)
+@app_commands.default_permissions(administrator=True)
+async def reload_responses(interaction: discord.Interaction):
+    logger.d(TAG, "reload_responses:")
+    if responses.load_responses_file():
+        await send_wrapper(interaction, "Responses file was reloaded.")
+    else:
+        await send_wrapper(interaction, "Failed to reload responses file. Please check the format and try again. No changes were made.")
+
+
+@tree.command(
+    name="get_all_responses",
+    description="Get the contents of the responses file",
+    guilds=guild_objects
+)
+@app_commands.default_permissions(administrator=True)
+async def get_all_responses(interaction: discord.Interaction):
+    logger.d(TAG, "get_all_responses:")
+    await send_wrapper(interaction, responses.get_responses_file())
+
+
+
 @client.event
 async def on_message(message):
     if not any(message.guild.id == guild.id for guild in guild_objects):
@@ -158,6 +184,7 @@ async def on_ready():
     for guild in guild_objects:
         await tree.sync(guild=guild)
     announcements_util = AnnouncementsUtil(client)
+    # responses.load_responses_file()
     logger.d(TAG, f"on_ready: announcements_util.is_started: {announcements_util.is_running}")
     # TODO: Add something like this once there is a way to have multiple threads listening for the interrupt signal.
     # loop = asyncio.get_running_loop()

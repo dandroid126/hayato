@@ -54,7 +54,7 @@ class DbManager:
                 time TEXT NOT NULL,
                 channel INTEGER NOT NULL,
                 message TEXT NOT NULL,
-                attachment_url TEXT
+                attachment TEXT
             )
             """
         )

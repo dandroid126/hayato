@@ -2,9 +2,10 @@ import asyncio
 import threading
 from datetime import datetime
 from typing import Final
-from tzlocal import get_localzone
 
+import discord
 from discord import Client
+from tzlocal import get_localzone
 
 from src import constants, logger
 from src.db.announcements.announcements_dao import AnnouncementsDao
@@ -46,8 +47,9 @@ class AnnouncementsUtil:
                     channel = self.client.get_channel(announcement.channel)
                     # TODO: add try/catch
                     if channel is not None:
-                        asyncio.run_coroutine_threadsafe(channel.send(announcement.message), loop)
-                        asyncio.run_coroutine_threadsafe(channel.send(announcement.attachment_url), loop)
+                        attachment_from_announcement = discord.Attachment(data=announcement.attachment, state=self.client._get_state()) if announcement.attachment else None
+                        file = asyncio.run_coroutine_threadsafe(attachment_from_announcement.to_file(), loop).result() if attachment_from_announcement else discord.utils.MISSING
+                        asyncio.run_coroutine_threadsafe(channel.send(announcement.message, file=file), loop).result()
                         announcements_dao.delete_announcement_by_id(announcement.id)
             signal_util.wait(SLEEP_DELAY)
         logger.i(TAG, "AnnouncementsUtil stopped")

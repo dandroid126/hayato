@@ -5,6 +5,8 @@ import discord
 from dateutil import parser
 from discord import app_commands
 from discord.abc import GuildChannel
+from discord.interactions import Interaction
+from discord.utils import MISSING
 from dotenv import load_dotenv
 
 import src.logger as logger
@@ -32,16 +34,13 @@ client = discord.Client(intents=intents)
 tree = app_commands.CommandTree(client)
 
 
-async def send_wrapper(sender: discord.Interaction | GuildChannel, text: str, attachment_url: Optional[str] = None):
-    logger.d(TAG, f"send_wrapper: text: {text}, attachment_url: {attachment_url}")
-    if isinstance(sender, discord.Interaction):
-        await sender.response.send_message(text)
-        if attachment_url is not None:
-            await sender.response.send_message(attachment_url)
+async def send_wrapper(sender: Interaction | GuildChannel, text: str, attachment: Optional[discord.Attachment] = None):
+    logger.d(TAG, f"send_wrapper: text: {text}, attachment: {attachment}")
+    file = await attachment.to_file() if attachment is not None else MISSING
+    if isinstance(sender, Interaction):
+        await sender.response.send_message(text, file=file)
     elif isinstance(sender, GuildChannel):
-        await sender.send(text)
-        if attachment_url is not None:
-            await sender.send(attachment_url)
+        await sender.send(text, file=file)
 
 
 def replace_line_breaks(text: str) -> str:
@@ -70,8 +69,8 @@ def replace_line_breaks(text: str) -> str:
 async def say(interaction: discord.Interaction, channel: discord.TextChannel, message: str, attachment: Optional[discord.Attachment] = None):
     logger.d(TAG, f"say: channel: {channel}, message: {message}, attachment: {attachment}")
     message = replace_line_breaks(message)
-    await send_wrapper(interaction, f"sending message to channel: {channel}")
-    await send_wrapper(channel, message, attachment.url if attachment else None)
+    await send_wrapper(interaction, f"sending message to channel: {channel}", attachment)
+    await send_wrapper(channel, message, attachment)
 
 
 @tree.command(
@@ -81,13 +80,13 @@ async def say(interaction: discord.Interaction, channel: discord.TextChannel, me
 )
 @app_commands.default_permissions(administrator=True)
 async def schedule_announcement(interaction: discord.Interaction, time: str, channel: discord.TextChannel, message: str, attachment: Optional[discord.Attachment] = None):
-    logger.d(TAG, f"schedule_announcement: time: {time}, channel: {channel} message: {message}, attachment: {attachment.url if attachment else 'None'}")
+    logger.d(TAG, f"schedule_announcement: time: {time}, channel: {channel} message: {message}, attachment: {attachment}")
     message = replace_line_breaks(message)
     try:
         parsed_time = parser.parse(time)
         if parsed_time.tzinfo is None:
             parsed_time = constants.JST.localize(parsed_time)
-        announcement = announcements_dao.schedule_announcement(parsed_time, channel.id, message, attachment.url if attachment else None)
+        announcement = announcements_dao.schedule_announcement(parsed_time, channel.id, message, attachment.to_dict() if attachment else None)
         await send_wrapper(interaction, f"Will send the message at time: {parsed_time}. Announcement details: {announcement}")
     except ValueError as e:
         logger.e(TAG, e, f"schedule_announcement: failed to parse time. time provided: {time}")
@@ -164,9 +163,8 @@ async def get_all_responses(interaction: discord.Interaction):
     await send_wrapper(interaction, responses.get_responses_file())
 
 
-
 @client.event
-async def on_message(message):
+async def on_message(message: discord.Message):
     if not any(message.guild.id == guild.id for guild in guild_objects):
         logger.d(TAG, f"on_message: message.guild.id: {message.guild.id} not in guild_objects: {guild_objects}")
         return
@@ -184,7 +182,6 @@ async def on_ready():
     for guild in guild_objects:
         await tree.sync(guild=guild)
     announcements_util = AnnouncementsUtil(client)
-    # responses.load_responses_file()
     logger.d(TAG, f"on_ready: announcements_util.is_started: {announcements_util.is_running}")
     # TODO: Add something like this once there is a way to have multiple threads listening for the interrupt signal.
     # loop = asyncio.get_running_loop()

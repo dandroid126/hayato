@@ -1,7 +1,7 @@
-import src.logger as logger
+from src.constants import LOGGER
 
 
 class LoggedRuntimeError(Exception):
     def __init__(self, tag, message):
         self.message = message
-        logger.e(tag, self.message)
+        LOGGER.e(tag, self.message)

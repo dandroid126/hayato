@@ -2,7 +2,7 @@ import sqlite3
 from sqlite3 import Error
 
 from src import constants
-from src import logger
+from src.constants import LOGGER
 
 global connection
 global cursor
@@ -32,9 +32,9 @@ class DbManager:
         try:
             self.connection = sqlite3.connect(path_to_db)
             self.cursor = self.connection.cursor()
-            logger.i(TAG, "__init__(): Connection to SQLite DB successful")
+            LOGGER.i(TAG, "__init__(): Connection to SQLite DB successful")
         except Error as e:
-            logger.e(TAG, "__init__(): Error occurred", e)
+            LOGGER.e(TAG, "__init__(): Error occurred", e)
 
         self.upgrade_db_schema()
 
@@ -44,7 +44,7 @@ class DbManager:
 
         Note: This function assumes that a database connection has already been established.
         """
-        logger.w(TAG, "create_tables(): create_tables: creating tables")
+        LOGGER.w(TAG, "create_tables(): create_tables: creating tables")
 
         # Create posts table
         self.cursor.execute(
@@ -97,13 +97,13 @@ class DbManager:
             int: The version of the database schema.
         """
         query = "SELECT version FROM db_schema WHERE rowid = '0'"
-        logger.i(TAG, f"get_db_schema_version(): executing: {query}")
+        LOGGER.i(TAG, f"get_db_schema_version(): executing: {query}")
         try:
             val = self.cursor.execute(query).fetchone()
             if val is not None:
                 return val[0]
         except sqlite3.OperationalError:
-            logger.i(TAG, "get_db_schema_version(): db_schema table not found. Assuming db_schema version is 0")
+            LOGGER.i(TAG, "get_db_schema_version(): db_schema table not found. Assuming db_schema version is 0")
             return 0
         return 0
 

@@ -4,7 +4,7 @@ from typing import Optional
 
 from dateutil import parser
 
-from src import logger
+from src.constants import LOGGER
 from src.db.announcements.announcements_record import AnnouncementsRecord
 from src.db.db_manager import DbManager, db_manager
 
@@ -26,7 +26,7 @@ class AnnouncementsDao:
     def get_announcement_by_id(self, row_id: int) -> Optional[AnnouncementsRecord]:
         query = "SELECT * FROM announcements WHERE id=?"
         params = (row_id,)
-        logger.i(TAG, f"get_announcement_by_id(): executing {query} with params {params}")
+        LOGGER.i(TAG, f"get_announcement_by_id(): executing {query} with params {params}")
         val = self.db_manager.cursor.execute(query, params).fetchone()
         if val is not None:
             return AnnouncementsRecord(val[0], parser.parse(val[1]), val[2], val[3], json.loads(val[4]))
@@ -34,7 +34,7 @@ class AnnouncementsDao:
 
     def get_all_announcements(self) -> list[AnnouncementsRecord]:
         query = "SELECT * FROM announcements"
-        logger.i(TAG, f"get_all_announcements(): executing {query}")
+        LOGGER.i(TAG, f"get_all_announcements(): executing {query}")
         vals = self.db_manager.cursor.execute(query).fetchall()
         out = []
         for val in vals:
@@ -44,7 +44,7 @@ class AnnouncementsDao:
     def schedule_announcement(self, time: datetime, channel: int, message: str, attachment: dict) -> Optional[AnnouncementsRecord]:
         query = "INSERT INTO announcements(time, channel, message, attachment) VALUES(?, ?, ?, ?) RETURNING *"
         params = (time, channel, message, json.dumps(attachment))
-        logger.i(TAG, f"schedule_announcement(): executing {query} with params {params}")
+        LOGGER.i(TAG, f"schedule_announcement(): executing {query} with params {params}")
         val = self.db_manager.cursor.execute(query, params).fetchone()
         self.db_manager.connection.commit()
         if val is not None:
@@ -54,7 +54,7 @@ class AnnouncementsDao:
     def delete_announcement_by_id(self, row_id: int):
         query = "DELETE FROM announcements WHERE id=? returning *"
         params = (row_id,)
-        logger.i(TAG, f"delete_announcement_by_id(): executing {query} with params {params}")
+        LOGGER.i(TAG, f"delete_announcement_by_id(): executing {query} with params {params}")
         val = self.db_manager.cursor.execute(query, params).fetchone()
         self.db_manager.connection.commit()
         if val is not None:

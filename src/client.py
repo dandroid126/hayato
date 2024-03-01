@@ -9,12 +9,12 @@ from discord.interactions import Interaction
 from discord.utils import MISSING
 from dotenv import load_dotenv
 
-import src.logger as logger
 import src.utils.responses as responses
 from src import constants
 from src.db.announcements.announcements_dao import announcements_dao
 from src.errors import LoggedRuntimeError
 from src.utils.announcements_util import AnnouncementsUtil
+from src.constants import LOGGER
 
 TAG = "client.py"
 
@@ -35,7 +35,7 @@ tree = app_commands.CommandTree(client)
 
 
 async def send_wrapper(sender: Interaction | GuildChannel, text: str, attachment: Optional[discord.Attachment] = None):
-    logger.d(TAG, f"send_wrapper: text: {text}, attachment: {attachment}")
+    LOGGER.d(TAG, f"send_wrapper: text: {text}, attachment: {attachment}")
     file = await attachment.to_file() if attachment is not None else MISSING
     if isinstance(sender, Interaction):
         await sender.response.send_message(text, file=file)
@@ -44,7 +44,7 @@ async def send_wrapper(sender: Interaction | GuildChannel, text: str, attachment
 
 
 def replace_line_breaks(text: str) -> str:
-    logger.d(TAG, f"replace_line_breaks: text: {text}")
+    LOGGER.d(TAG, f"replace_line_breaks: text: {text}")
     return text.replace("\\n", "\n")
 
 
@@ -56,7 +56,7 @@ def replace_line_breaks(text: str) -> str:
 # )
 # @app_commands.default_permissions(administrator=True)
 # async def command_test(interaction: discord.Interaction, message: str):
-#     logger.d(TAG, "test:")
+#     LOGGER.d(TAG, "test:")
 #     await send_wrapper(interaction, 'test')
 
 
@@ -67,7 +67,7 @@ def replace_line_breaks(text: str) -> str:
 )
 @app_commands.default_permissions(administrator=True)
 async def say(interaction: discord.Interaction, channel: discord.TextChannel, message: str, attachment: Optional[discord.Attachment] = None):
-    logger.d(TAG, f"say: channel: {channel}, message: {message}, attachment: {attachment}")
+    LOGGER.d(TAG, f"say: channel: {channel}, message: {message}, attachment: {attachment}")
     message = replace_line_breaks(message)
     await send_wrapper(interaction, f"sending message to channel: {channel}", attachment)
     await send_wrapper(channel, message, attachment)
@@ -80,7 +80,7 @@ async def say(interaction: discord.Interaction, channel: discord.TextChannel, me
 )
 @app_commands.default_permissions(administrator=True)
 async def schedule_announcement(interaction: discord.Interaction, time: str, channel: discord.TextChannel, message: str, attachment: Optional[discord.Attachment] = None):
-    logger.d(TAG, f"schedule_announcement: time: {time}, channel: {channel} message: {message}, attachment: {attachment}")
+    LOGGER.d(TAG, f"schedule_announcement: time: {time}, channel: {channel} message: {message}, attachment: {attachment}")
     message = replace_line_breaks(message)
     try:
         parsed_time = parser.parse(time)
@@ -89,7 +89,7 @@ async def schedule_announcement(interaction: discord.Interaction, time: str, cha
         announcement = announcements_dao.schedule_announcement(parsed_time, channel.id, message, attachment.to_dict() if attachment else None)
         await send_wrapper(interaction, f"Will send the message at time: {parsed_time}. Announcement details: {announcement}")
     except ValueError as e:
-        logger.e(TAG, e, f"schedule_announcement: failed to parse time. time provided: {time}")
+        LOGGER.e(TAG, e, f"schedule_announcement: failed to parse time. time provided: {time}")
         await send_wrapper(interaction, f"Was not able to parse the provided time: {time}. Check the entered value and try again. Announcement was not scheduled.")
 
 
@@ -100,7 +100,7 @@ async def schedule_announcement(interaction: discord.Interaction, time: str, cha
 )
 @app_commands.default_permissions(administrator=True)
 async def cancel_announcement(interaction: discord.Interaction, announcement_id: int):
-    logger.d(TAG, f"cancel_announcement: announcement_id: {announcement_id}")
+    LOGGER.d(TAG, f"cancel_announcement: announcement_id: {announcement_id}")
     announcement = announcements_dao.delete_announcement_by_id(announcement_id)
     if announcement is None:
         await send_wrapper(interaction, f"Could not find an announcement with the specified id: {announcement_id}.")
@@ -115,7 +115,7 @@ async def cancel_announcement(interaction: discord.Interaction, announcement_id:
 )
 @app_commands.default_permissions(administrator=True)
 async def view_scheduled_announcements(interaction: discord.Interaction):
-    logger.d(TAG, "view_scheduled_announcements:")
+    LOGGER.d(TAG, "view_scheduled_announcements:")
     announcements = announcements_dao.get_all_announcements()
     await send_wrapper(interaction, f"Found {len(announcements)} scheduled announcements:")
     channel = interaction.channel
@@ -130,7 +130,7 @@ async def view_scheduled_announcements(interaction: discord.Interaction):
 )
 @app_commands.default_permissions(administrator=True)
 async def view_scheduled_announcement_by_id(interaction: discord.Interaction, announcement_id: int):
-    logger.d(TAG, f"view_scheduled_announcement_by_id: announcement_id: {announcement_id}")
+    LOGGER.d(TAG, f"view_scheduled_announcement_by_id: announcement_id: {announcement_id}")
     announcement = announcements_dao.get_announcement_by_id(announcement_id)
     if announcement is None:
         await send_wrapper(interaction, f"Could not find an announcement with the specified id: {announcement_id}.")
@@ -145,7 +145,7 @@ async def view_scheduled_announcement_by_id(interaction: discord.Interaction, an
 )
 @app_commands.default_permissions(administrator=True)
 async def reload_responses(interaction: discord.Interaction):
-    logger.d(TAG, "reload_responses:")
+    LOGGER.d(TAG, "reload_responses:")
     if responses.load_responses_file():
         await send_wrapper(interaction, "Responses file was reloaded.")
     else:
@@ -159,17 +159,17 @@ async def reload_responses(interaction: discord.Interaction):
 )
 @app_commands.default_permissions(administrator=True)
 async def get_all_responses(interaction: discord.Interaction):
-    logger.d(TAG, "get_all_responses:")
+    LOGGER.d(TAG, "get_all_responses:")
     await send_wrapper(interaction, responses.get_responses_file())
 
 
 @client.event
 async def on_message(message: discord.Message):
     if not any(message.guild.id == guild.id for guild in guild_objects):
-        logger.d(TAG, f"on_message: message.guild.id: {message.guild.id} not in guild_objects: {guild_objects}")
+        LOGGER.d(TAG, f"on_message: message.guild.id: {message.guild.id} not in guild_objects: {guild_objects}")
         return
     if message.author == client.user:
-        logger.d(TAG, f"on_message: message.author == client.user: {message.author == client.user}")
+        LOGGER.d(TAG, f"on_message: message.author == client.user: {message.author == client.user}")
         return
     msg = message.content
     response = responses.get_response(msg)
@@ -182,18 +182,18 @@ async def on_ready():
     for guild in guild_objects:
         await tree.sync(guild=guild)
     announcements_util = AnnouncementsUtil(client)
-    logger.d(TAG, f"on_ready: announcements_util.is_started: {announcements_util.is_running}")
+    LOGGER.d(TAG, f"on_ready: announcements_util.is_started: {announcements_util.is_running}")
     # TODO: Add something like this once there is a way to have multiple threads listening for the interrupt signal.
     # loop = asyncio.get_running_loop()
     # threading.Thread(target=bot_logout_listener, args=(loop, )).start()
 
 
 # def bot_logout_listener(loop):
-#     logger.d(TAG, "bot_logout_listener")
+#     LOGGER.d(TAG, "bot_logout_listener")
 #     while not signal_util.is_interrupted:
-#         logger.d(TAG, "bot_logout_listener: not interrupted. sleeping for 60 seconds")
+#         LOGGER.d(TAG, "bot_logout_listener: not interrupted. sleeping for 60 seconds")
 #         signal_util.wait(60)
-#     logger.d(TAG, "bot_logout_listener: shutting down")
+#     LOGGER.d(TAG, "bot_logout_listener: shutting down")
 #     asyncio.run_coroutine_threadsafe(bot.close(), loop)
 
 

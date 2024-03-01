@@ -6,7 +6,7 @@ from typing import Optional
 
 from dotenv import load_dotenv
 
-import src.logger as logger
+from src.constants import LOGGER
 
 TAG = "responses.py"
 
@@ -35,12 +35,12 @@ def load_responses_file():
                 _response_lists.append([parse_response(response) for response in row[1].split(";;")])
             csv_file.seek(0)
             _last_known_good_file = csv_file.read().replace("\\", "\\\\\\")
-        logger.i(TAG, "Successfully loaded responses file.")
-        logger.d(TAG, str(_keyword_lists))
-        logger.d(TAG, str(_response_lists))
+        LOGGER.i(TAG, "Successfully loaded responses file.")
+        LOGGER.d(TAG, str(_keyword_lists))
+        LOGGER.d(TAG, str(_response_lists))
         return True
     except Exception as e:
-        logger.e(TAG, f"Error loading responses file: {e}")
+        LOGGER.e(TAG, f"Error loading responses file: {e}")
         _keyword_lists = keyword_lists_old
         _response_lists = response_lists_old
         return False

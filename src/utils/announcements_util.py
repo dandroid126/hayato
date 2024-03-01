@@ -7,7 +7,8 @@ import discord
 from discord import Client
 from tzlocal import get_localzone
 
-from src import constants, logger
+from src import constants
+from src.constants import LOGGER
 from src.db.announcements.announcements_dao import AnnouncementsDao
 from src.db.db_manager import DbManager
 from src.utils.signal_util import signal_util
@@ -35,14 +36,14 @@ class AnnouncementsUtil:
         db_manager = DbManager(constants.DB_PATH)
         announcements_dao = AnnouncementsDao(db_manager)
         while not signal_util.is_interrupted and self.is_running:
-            logger.d(TAG, "AnnouncementsUtil is processing announcements...")
+            LOGGER.d(TAG, "AnnouncementsUtil is processing announcements...")
             announcements = announcements_dao.get_all_announcements()
             if announcements is None:
-                logger.d(TAG, "No announcements to process")
+                LOGGER.d(TAG, "No announcements to process")
                 signal_util.wait(SLEEP_DELAY)
                 continue
             for announcement in announcements:
-                logger.d(TAG, f"announcement: {announcement}")
+                LOGGER.d(TAG, f"announcement: {announcement}")
                 if announcement.time < datetime.now(get_localzone()):
                     channel = self.client.get_channel(announcement.channel)
                     # TODO: add try/catch
@@ -52,7 +53,7 @@ class AnnouncementsUtil:
                         asyncio.run_coroutine_threadsafe(channel.send(announcement.message, file=file), loop).result()
                         announcements_dao.delete_announcement_by_id(announcement.id)
             signal_util.wait(SLEEP_DELAY)
-        logger.i(TAG, "AnnouncementsUtil stopped")
+        LOGGER.i(TAG, "AnnouncementsUtil stopped")
         # TODO: This is some serious spaghetti code. It solves the problem of not being able to close the bot on an interrupt because signal_util captures it instead of it going to the bot,
         #  But this really should not be done this way. There needs to be a way to have multiple threads listening for the interrupt signal to shut down gracefully.
         asyncio.run_coroutine_threadsafe(self.client.close(), loop)

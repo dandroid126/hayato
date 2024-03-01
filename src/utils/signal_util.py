@@ -1,7 +1,7 @@
 import signal
 import threading
 
-from src import logger
+from src.constants import LOGGER
 
 TAG = "signal_util"
 
@@ -33,7 +33,7 @@ class SignalUtil:
             None
         """
         self.is_interrupted = True
-        logger.i(TAG, f"interrupt(): interrupted. args: {args}")
+        LOGGER.i(TAG, f"interrupt(): interrupted. args: {args}")
         self.condition.acquire()
         self.condition.notify()
         self.condition.release()

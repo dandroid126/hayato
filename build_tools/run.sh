@@ -6,5 +6,5 @@ function cleanup() {
 
 trap cleanup EXIT
 
-docker build --tag hayato .
-docker run --rm --name hayato -v ./.env:/app/.env -v ./out:/app/out localhost/hayato:latest
+docker build --tag hayato:dev .
+docker run --rm --name hayato -v ./.env:/app/.env -v ./out:/app/out localhost/hayato:dev

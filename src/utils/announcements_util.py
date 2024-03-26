@@ -24,6 +24,7 @@ class AnnouncementsUtil:
         self.start()
 
     def start(self):
+        self.is_running = True
         loop = asyncio.get_running_loop()
         thread = threading.Thread(target=self._loop, args=(loop, ))
         thread.start()
@@ -32,7 +33,6 @@ class AnnouncementsUtil:
         self.is_running = False
 
     def _loop(self, loop):
-        self.is_running = True
         db_manager = DbManager(constants.DB_PATH)
         announcements_dao = AnnouncementsDao(db_manager)
         while not signal_util.is_interrupted and self.is_running:

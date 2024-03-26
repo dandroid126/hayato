@@ -11,20 +11,21 @@ from dotenv import load_dotenv
 
 import src.utils.responses as responses
 from src import constants
+from src.constants import LOGGER
 from src.db.announcements.announcements_dao import announcements_dao
+from src.db.birthday.birthday_dao import birthday_dao
 from src.errors import LoggedRuntimeError
 from src.utils.announcements_util import AnnouncementsUtil
-from src.constants import LOGGER
+from src.utils.birthday_util import BirthdayUtil
 
 TAG = "client.py"
 
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
-GUILD_IDS = os.getenv('GUILD_IDS').split(",")
+GUILD_ID = os.getenv('GUILD_ID')
+BIRTHDAY_CHANNEL_ID = int(os.getenv('BIRTHDAY_CHANNEL_ID'))
 
-guild_objects = []
-for guild_id in GUILD_IDS:
-    guild_objects.append(discord.Object(id=guild_id))
+guild_object = discord.Object(id=GUILD_ID)
 
 if TOKEN is None:
     raise LoggedRuntimeError(TAG, "TOKEN not found. Check that .env file exists in src dir and that its contents are correct")
@@ -52,7 +53,7 @@ def replace_line_breaks(text: str) -> str:
 # @tree.command(
 #     name="command_test",
 #     description="command_test",
-#     guilds=guild_objects
+#     guild=guild_object
 # )
 # @app_commands.default_permissions(administrator=True)
 # async def command_test(interaction: discord.Interaction, message: str):
@@ -63,7 +64,7 @@ def replace_line_breaks(text: str) -> str:
 @tree.command(
     name="say",
     description="Say something in a channel now",
-    guilds=guild_objects
+    guild=guild_object
 )
 @app_commands.default_permissions(administrator=True)
 async def say(interaction: discord.Interaction, channel: discord.TextChannel, message: str, attachment: Optional[discord.Attachment] = None):
@@ -76,7 +77,7 @@ async def say(interaction: discord.Interaction, channel: discord.TextChannel, me
 @tree.command(
     name="schedule_announcement",
     description="Schedule Announcement",
-    guilds=guild_objects
+    guild=guild_object
 )
 @app_commands.default_permissions(administrator=True)
 async def schedule_announcement(interaction: discord.Interaction, time: str, channel: discord.TextChannel, message: str, attachment: Optional[discord.Attachment] = None):
@@ -96,7 +97,7 @@ async def schedule_announcement(interaction: discord.Interaction, time: str, cha
 @tree.command(
     name="cancel_announcement",
     description="Cancel Announcement by ID",
-    guilds=guild_objects
+    guild=guild_object
 )
 @app_commands.default_permissions(administrator=True)
 async def cancel_announcement(interaction: discord.Interaction, announcement_id: int):
@@ -111,7 +112,7 @@ async def cancel_announcement(interaction: discord.Interaction, announcement_id:
 @tree.command(
     name="view_scheduled_announcements",
     description="View All Scheduled Announcements",
-    guilds=guild_objects
+    guild=guild_object
 )
 @app_commands.default_permissions(administrator=True)
 async def view_scheduled_announcements(interaction: discord.Interaction):
@@ -126,7 +127,7 @@ async def view_scheduled_announcements(interaction: discord.Interaction):
 @tree.command(
     name="view_announcement_by_id",
     description="View Scheduled Announcement by ID",
-    guilds=guild_objects
+    guild=guild_object
 )
 @app_commands.default_permissions(administrator=True)
 async def view_scheduled_announcement_by_id(interaction: discord.Interaction, announcement_id: int):
@@ -141,7 +142,7 @@ async def view_scheduled_announcement_by_id(interaction: discord.Interaction, an
 @tree.command(
     name="reload_responses",
     description="Reload the responses file",
-    guilds=guild_objects
+    guild=guild_object
 )
 @app_commands.default_permissions(administrator=True)
 async def reload_responses(interaction: discord.Interaction):
@@ -155,7 +156,7 @@ async def reload_responses(interaction: discord.Interaction):
 @tree.command(
     name="get_all_responses",
     description="Get the contents of the responses file",
-    guilds=guild_objects
+    guild=guild_object
 )
 @app_commands.default_permissions(administrator=True)
 async def get_all_responses(interaction: discord.Interaction):
@@ -163,10 +164,75 @@ async def get_all_responses(interaction: discord.Interaction):
     await send_wrapper(interaction, responses.get_responses_file())
 
 
+@tree.command(
+    name="learn_birthday",
+    description="Tell me your birthday, and I will send you happy birthday wishes.",
+    guild=guild_object
+)
+async def learn_birthday(interaction: discord.Interaction, date: str):
+    LOGGER.d(TAG, "learn_birthday:")
+    user_id = interaction.user.id
+
+    try:
+        parsed_date = parser.parse(date).strftime("%m-%d")
+        LOGGER.d(TAG, f"learn_birthday: user_id: {user_id}, parsed_date: {parsed_date}")
+        birthday = birthday_dao.learn_birthday(user_id, parsed_date)
+        await send_wrapper(interaction, "I will remember that your birthday is on this day: " + birthday.date.strftime("%B %d"))
+    except ValueError as e:
+        LOGGER.e(TAG, e, f"learn_birthday: failed to parse date. date provided: {date}")
+        await send_wrapper(interaction, f"Sorry, I was not able to understand the date: '{date}'. Please try again in the format 'January 1st'.")
+
+
+@tree.command(
+    name="learn_others_birthday",
+    description="Tell me someone's birthday, and I will send them happy birthday wishes.",
+    guild=guild_object
+)
+async def learn_others_birthday(interaction: discord.Interaction, user: discord.User, date: str):
+    LOGGER.d(TAG, "learn_birthday:")
+    user_id = user.id
+
+    try:
+        parsed_date = parser.parse(date).strftime("%m-%d")
+        LOGGER.d(TAG, f"learn_birthday: user_id: {user_id}, parsed_date: {parsed_date}")
+        birthday = birthday_dao.learn_birthday(user_id, parsed_date)
+        await send_wrapper(interaction, f"I will remember that {user.mention}'s birthday is on this day: " + birthday.date.strftime("%B %d"))
+    except ValueError as e:
+        LOGGER.e(TAG, e, f"learn_birthday: failed to parse date. date provided: {date}")
+        await send_wrapper(interaction, f"Sorry, I was not able to understand the date: '{date}'. Please try again in the format 'January 1st'.")
+
+
+@tree.command(
+    name="forget_birthday",
+    description="I will no longer send you happy birthday wishes. :(",
+    guild=guild_object
+)
+async def forget_birthday(interaction: discord.Interaction):
+    LOGGER.d(TAG, "forget_birthday:")
+    user_id = interaction.user.id
+    LOGGER.d(TAG, f"forget_birthday: user_id: {user_id}")
+    birthday_dao.forget_birthday(user_id)
+    await send_wrapper(interaction, "Your birthday has been forgotten.")
+
+
+@tree.command(
+    name="get_all_birthdays",
+    description="Get all the birthdays",
+    guild=guild_object
+)
+@app_commands.default_permissions(administrator=True)
+async def get_all_birthdays(interaction: discord.Interaction):
+    LOGGER.d(TAG, "get_all_birthdays:")
+    birthdays = birthday_dao.get_all_birthdays()
+    response = "Birthdays:\n"
+    for birthday in birthdays:
+        response += f"username: {client.get_user(birthday.user_id)}: date: {birthday.date.strftime('%B %d')}\n"
+    await send_wrapper(interaction, response)
+
 @client.event
 async def on_message(message: discord.Message):
-    if not any(message.guild.id == guild.id for guild in guild_objects):
-        LOGGER.d(TAG, f"on_message: message.guild.id: {message.guild.id} not in guild_objects: {guild_objects}")
+    if message.guild.id != GUILD_ID:
+        LOGGER.d(TAG, f"on_message: message.guild.id: {message.guild.id} not equal to GUILD_ID: {GUILD_ID}")
         return
     if message.author == client.user:
         LOGGER.d(TAG, f"on_message: message.author == client.user: {message.author == client.user}")
@@ -179,10 +245,11 @@ async def on_message(message: discord.Message):
 
 @client.event
 async def on_ready():
-    for guild in guild_objects:
-        await tree.sync(guild=guild)
+    await tree.sync(guild=guild_object)
     announcements_util = AnnouncementsUtil(client)
     LOGGER.d(TAG, f"on_ready: announcements_util.is_started: {announcements_util.is_running}")
+    birthday_util = BirthdayUtil(client, BIRTHDAY_CHANNEL_ID)
+    LOGGER.d(TAG, f"on_ready: birthday_util.is_started: {birthday_util.is_running}")
     # TODO: Add something like this once there is a way to have multiple threads listening for the interrupt signal.
     # loop = asyncio.get_running_loop()
     # threading.Thread(target=bot_logout_listener, args=(loop, )).start()

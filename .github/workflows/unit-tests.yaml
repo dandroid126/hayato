@@ -3,6 +3,7 @@ name: Run python unit tests
 on: [push, pull_request]
 
 jobs:
+  if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.event.pull_request.base.repo.full_name
   run-tests:
     runs-on: ubuntu-latest
     steps:

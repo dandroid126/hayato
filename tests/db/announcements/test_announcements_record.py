@@ -1,7 +1,7 @@
 import unittest
 from datetime import datetime
 
-from db.announcements.announcements_record import AnnouncementsRecord
+from src.db.announcements.announcements_record import AnnouncementsRecord
 
 
 class TestAnnouncementsRecord(unittest.TestCase):

@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Optional
 
 
 @dataclass
@@ -8,7 +9,7 @@ class AnnouncementsRecord:
     time: datetime
     channel: int
     message: str
-    attachment: dict[str, str | int | bool]
+    attachment: Optional[dict[str, str | int | bool]] = None
 
     def __str__(self):
-        return f"ID: {self.id}, time: {self.time}, channel: {self.channel}, message: {self.message}, attachment: {self.attachment.get('url')}"
+        return f"ID: {self.id}, time: {self.time}, channel: {self.channel}, message: {self.message}, attachment: {self.attachment.get('url') if self.attachment else None}"

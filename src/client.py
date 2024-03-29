@@ -23,7 +23,8 @@ TAG = "client.py"
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
 GUILD_ID = os.getenv('GUILD_ID')
-BIRTHDAY_CHANNEL_ID = int(os.getenv('BIRTHDAY_CHANNEL_ID'))
+BIRTHDAY_CHANNEL_ID = os.getenv('BIRTHDAY_CHANNEL_ID')
+BIRTHDAY_CHANNEL_ID = int(BIRTHDAY_CHANNEL_ID) if BIRTHDAY_CHANNEL_ID is not None else None
 
 guild_object = discord.Object(id=GUILD_ID)
 
@@ -163,71 +164,75 @@ async def get_all_responses(interaction: discord.Interaction):
     LOGGER.d(TAG, "get_all_responses:")
     await send_wrapper(interaction, responses.get_responses_file())
 
+if BIRTHDAY_CHANNEL_ID is not None:
+    @tree.command(
+        name="learn_birthday",
+        description="Tell me your birthday, and I will send you happy birthday wishes.",
+        guild=guild_object
+    )
+    async def learn_birthday(interaction: discord.Interaction, date: str):
+        LOGGER.d(TAG, "learn_birthday:")
+        user_id = interaction.user.id
 
-@tree.command(
-    name="learn_birthday",
-    description="Tell me your birthday, and I will send you happy birthday wishes.",
-    guild=guild_object
-)
-async def learn_birthday(interaction: discord.Interaction, date: str):
-    LOGGER.d(TAG, "learn_birthday:")
-    user_id = interaction.user.id
-
-    try:
-        parsed_date = parser.parse(date).strftime("%m-%d")
-        LOGGER.d(TAG, f"learn_birthday: user_id: {user_id}, parsed_date: {parsed_date}")
-        birthday = birthday_dao.learn_birthday(user_id, parsed_date)
-        await send_wrapper(interaction, "I will remember that your birthday is on this day: " + birthday.date.strftime("%B %d"))
-    except ValueError as e:
-        LOGGER.e(TAG, e, f"learn_birthday: failed to parse date. date provided: {date}")
-        await send_wrapper(interaction, f"Sorry, I was not able to understand the date: '{date}'. Please try again in the format 'January 1st'.")
-
-
-@tree.command(
-    name="learn_others_birthday",
-    description="Tell me someone's birthday, and I will send them happy birthday wishes.",
-    guild=guild_object
-)
-async def learn_others_birthday(interaction: discord.Interaction, user: discord.User, date: str):
-    LOGGER.d(TAG, "learn_birthday:")
-    user_id = user.id
-
-    try:
-        parsed_date = parser.parse(date).strftime("%m-%d")
-        LOGGER.d(TAG, f"learn_birthday: user_id: {user_id}, parsed_date: {parsed_date}")
-        birthday = birthday_dao.learn_birthday(user_id, parsed_date)
-        await send_wrapper(interaction, f"I will remember that {user.mention}'s birthday is on this day: " + birthday.date.strftime("%B %d"))
-    except ValueError as e:
-        LOGGER.e(TAG, e, f"learn_birthday: failed to parse date. date provided: {date}")
-        await send_wrapper(interaction, f"Sorry, I was not able to understand the date: '{date}'. Please try again in the format 'January 1st'.")
+        try:
+            parsed_date = parser.parse(date).strftime("%m-%d")
+            LOGGER.d(TAG, f"learn_birthday: user_id: {user_id}, parsed_date: {parsed_date}")
+            birthday = birthday_dao.learn_birthday(user_id, parsed_date)
+            await send_wrapper(interaction, "I will remember that your birthday is on this day: " + birthday.date.strftime("%B %d"))
+        except ValueError as e:
+            LOGGER.e(TAG, e, f"learn_birthday: failed to parse date. date provided: {date}")
+            await send_wrapper(interaction, f"Sorry, I was not able to understand the date: '{date}'. Please try again in the format 'January 1st'.")
 
 
-@tree.command(
-    name="forget_birthday",
-    description="I will no longer send you happy birthday wishes. :(",
-    guild=guild_object
-)
-async def forget_birthday(interaction: discord.Interaction):
-    LOGGER.d(TAG, "forget_birthday:")
-    user_id = interaction.user.id
-    LOGGER.d(TAG, f"forget_birthday: user_id: {user_id}")
-    birthday_dao.forget_birthday(user_id)
-    await send_wrapper(interaction, "Your birthday has been forgotten.")
+if BIRTHDAY_CHANNEL_ID is not None:
+    @tree.command(
+        name="learn_others_birthday",
+        description="Tell me someone's birthday, and I will send them happy birthday wishes.",
+        guild=guild_object
+    )
+    async def learn_others_birthday(interaction: discord.Interaction, user: discord.User, date: str):
+        LOGGER.d(TAG, "learn_birthday:")
+        user_id = user.id
+
+        try:
+            parsed_date = parser.parse(date).strftime("%m-%d")
+            LOGGER.d(TAG, f"learn_birthday: user_id: {user_id}, parsed_date: {parsed_date}")
+            birthday = birthday_dao.learn_birthday(user_id, parsed_date)
+            await send_wrapper(interaction, f"I will remember that {user.mention}'s birthday is on this day: " + birthday.date.strftime("%B %d"))
+        except ValueError as e:
+            LOGGER.e(TAG, e, f"learn_birthday: failed to parse date. date provided: {date}")
+            await send_wrapper(interaction, f"Sorry, I was not able to understand the date: '{date}'. Please try again in the format 'January 1st'.")
 
 
-@tree.command(
-    name="get_all_birthdays",
-    description="Get all the birthdays",
-    guild=guild_object
-)
-@app_commands.default_permissions(administrator=True)
-async def get_all_birthdays(interaction: discord.Interaction):
-    LOGGER.d(TAG, "get_all_birthdays:")
-    birthdays = birthday_dao.get_all_birthdays()
-    response = "Birthdays:\n"
-    for birthday in birthdays:
-        response += f"username: {client.get_user(birthday.user_id)}: date: {birthday.date.strftime('%B %d')}\n"
-    await send_wrapper(interaction, response)
+if BIRTHDAY_CHANNEL_ID is not None:
+    @tree.command(
+        name="forget_birthday",
+        description="I will no longer send you happy birthday wishes. :(",
+        guild=guild_object
+    )
+    async def forget_birthday(interaction: discord.Interaction):
+        LOGGER.d(TAG, "forget_birthday:")
+        user_id = interaction.user.id
+        LOGGER.d(TAG, f"forget_birthday: user_id: {user_id}")
+        birthday_dao.forget_birthday(user_id)
+        await send_wrapper(interaction, "Your birthday has been forgotten.")
+
+
+if BIRTHDAY_CHANNEL_ID is not None:
+    @tree.command(
+        name="get_all_birthdays",
+        description="Get all the birthdays",
+        guild=guild_object
+    )
+    @app_commands.default_permissions(administrator=True)
+    async def get_all_birthdays(interaction: discord.Interaction):
+        LOGGER.d(TAG, "get_all_birthdays:")
+        birthdays = birthday_dao.get_all_birthdays()
+        response = "Birthdays:\n"
+        for birthday in birthdays:
+            response += f"username: {client.get_user(birthday.user_id)}: date: {birthday.date.strftime('%B %d')}\n"
+        await send_wrapper(interaction, response)
+
 
 @client.event
 async def on_message(message: discord.Message):
@@ -248,8 +253,9 @@ async def on_ready():
     await tree.sync(guild=guild_object)
     announcements_util = AnnouncementsUtil(client)
     LOGGER.d(TAG, f"on_ready: announcements_util.is_started: {announcements_util.is_running}")
-    birthday_util = BirthdayUtil(client, BIRTHDAY_CHANNEL_ID)
-    LOGGER.d(TAG, f"on_ready: birthday_util.is_started: {birthday_util.is_running}")
+    if BIRTHDAY_CHANNEL_ID is not None:
+        birthday_util = BirthdayUtil(client, BIRTHDAY_CHANNEL_ID)
+        LOGGER.d(TAG, f"on_ready: birthday_util.is_started: {birthday_util.is_running}")
     # TODO: Add something like this once there is a way to have multiple threads listening for the interrupt signal.
     # loop = asyncio.get_running_loop()
     # threading.Thread(target=bot_logout_listener, args=(loop, )).start()

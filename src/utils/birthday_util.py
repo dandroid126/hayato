@@ -1,5 +1,6 @@
 import asyncio
 import threading
+from asyncio import AbstractEventLoop
 from datetime import datetime, timedelta
 
 import pytz
@@ -47,7 +48,7 @@ class BirthdayUtil:
         LOGGER.d(TAG, f"seconds_until_tomorrow: {seconds_until_tomorrow}")
         return seconds_until_tomorrow
 
-    def _loop(self, loop):
+    def _loop(self, loop: AbstractEventLoop) -> None:
         # Need to get the DB manager and dao here because it needs to be initialized in the same thread it is used from
         db_manager = DbManager(constants.DB_PATH)
         birthday_dao = BirthdayDao(db_manager)
@@ -67,6 +68,3 @@ class BirthdayUtil:
                         birthday_dao.update_last_wished_year(birthday.user_id, datetime.now().astimezone(BIRTHDAY_TIMEZONE).year)
             signal_util.wait(self._get_sleep_delay())
         LOGGER.i(TAG, "BirthdaysUtil stopped")
-        # TODO: This is some serious spaghetti code. It solves the problem of not being able to close the bot on an interrupt because signal_util captures it instead of it going to the bot,
-        #  But this really should not be done this way. There needs to be a way to have multiple threads listening for the interrupt signal to shut down gracefully.
-        asyncio.run_coroutine_threadsafe(self.client.close(), loop)

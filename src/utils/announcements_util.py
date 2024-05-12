@@ -54,8 +54,3 @@ class AnnouncementsUtil:
                         announcements_dao.delete_announcement_by_id(announcement.id)
             signal_util.wait(SLEEP_DELAY)
         LOGGER.i(TAG, "AnnouncementsUtil stopped")
-        # TODO: This is some serious spaghetti code. It solves the problem of not being able to close the bot on an interrupt because signal_util captures it instead of it going to the bot,
-        #  But this really should not be done this way. There needs to be a way to have multiple threads listening for the interrupt signal to shut down gracefully.
-        asyncio.run_coroutine_threadsafe(self.client.close(), loop)
-
-

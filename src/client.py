@@ -22,7 +22,7 @@ TAG = "client.py"
 
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
-GUILD_ID = os.getenv('GUILD_ID')
+GUILD_ID = int(os.getenv('GUILD_ID'))
 BIRTHDAY_CHANNEL_ID = os.getenv('BIRTHDAY_CHANNEL_ID')
 BIRTHDAY_CHANNEL_ID = int(BIRTHDAY_CHANNEL_ID) if BIRTHDAY_CHANNEL_ID is not None else None
 
@@ -251,23 +251,15 @@ async def on_message(message: discord.Message):
 @client.event
 async def on_ready():
     await tree.sync(guild=guild_object)
+    # Start waiting for announcement scheduled time
     announcements_util = AnnouncementsUtil(client)
     LOGGER.d(TAG, f"on_ready: announcements_util.is_started: {announcements_util.is_running}")
+
+    # If the birthdays channel is set, start waiting for birthdays
     if BIRTHDAY_CHANNEL_ID is not None:
         birthday_util = BirthdayUtil(client, BIRTHDAY_CHANNEL_ID)
         LOGGER.d(TAG, f"on_ready: birthday_util.is_started: {birthday_util.is_running}")
-    # TODO: Add something like this once there is a way to have multiple threads listening for the interrupt signal.
-    # loop = asyncio.get_running_loop()
-    # threading.Thread(target=bot_logout_listener, args=(loop, )).start()
 
+    LOGGER.d(TAG, "on_ready: done")
 
-# def bot_logout_listener(loop):
-#     LOGGER.d(TAG, "bot_logout_listener")
-#     while not signal_util.is_interrupted:
-#         LOGGER.d(TAG, "bot_logout_listener: not interrupted. sleeping for 60 seconds")
-#         signal_util.wait(60)
-#     LOGGER.d(TAG, "bot_logout_listener: shutting down")
-#     asyncio.run_coroutine_threadsafe(bot.close(), loop)
-
-
-client.run(TOKEN)
+client.run(TOKEN, reconnect=True)

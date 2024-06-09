@@ -61,7 +61,7 @@ class BirthdayUtil:
                 continue
             for birthday in birthdays:
                 LOGGER.d(TAG, f"birthday: {birthday}")
-                if birthday.date.strftime(DATE_FORMAT) == datetime.now().astimezone(BIRTHDAY_TIMEZONE).strftime(DATE_FORMAT):
+                if birthday.date.strftime(DATE_FORMAT) == datetime.now().astimezone(BIRTHDAY_TIMEZONE).strftime(DATE_FORMAT) and birthday.last_wished_year < datetime.now().astimezone(BIRTHDAY_TIMEZONE).year:
                     # TODO: add try/catch
                     if self.channel is not None:
                         asyncio.run_coroutine_threadsafe(self.channel.send(self._get_birthday_message(birthday.user_id)), loop).result()

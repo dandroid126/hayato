@@ -25,6 +25,8 @@ TOKEN = os.getenv('DISCORD_TOKEN')
 GUILD_ID = int(os.getenv('GUILD_ID'))
 BIRTHDAY_CHANNEL_ID = os.getenv('BIRTHDAY_CHANNEL_ID')
 BIRTHDAY_CHANNEL_ID = int(BIRTHDAY_CHANNEL_ID) if BIRTHDAY_CHANNEL_ID is not None else None
+announcements_util: Optional[AnnouncementsUtil] = None
+birthday_util: Optional[BirthdayUtil] = None
 
 guild_object = discord.Object(id=GUILD_ID)
 
@@ -250,15 +252,27 @@ async def on_message(message: discord.Message):
 
 @client.event
 async def on_ready():
+    LOGGER.d(TAG, "on_ready:")
+    global announcements_util
+    global birthday_util
     await tree.sync(guild=guild_object)
-    # Start waiting for announcement scheduled time
-    announcements_util = AnnouncementsUtil(client)
-    LOGGER.d(TAG, f"on_ready: announcements_util.is_started: {announcements_util.is_running}")
+    if announcements_util is None:
+        # Start waiting for announcement scheduled time
+        announcements_util = AnnouncementsUtil(client)
+        LOGGER.d(TAG, f"on_ready: announcements_util.is_started: {announcements_util.is_running}")
+    else:
+        # If the announcements util is already set, skip setting it again
+        # This happens in the case of a reconnect
+        LOGGER.d(TAG, "on_ready: announcements_util is already started")
 
     # If the birthdays channel is set, start waiting for birthdays
-    if BIRTHDAY_CHANNEL_ID is not None:
+    if BIRTHDAY_CHANNEL_ID is not None and birthday_util is None:
         birthday_util = BirthdayUtil(client, BIRTHDAY_CHANNEL_ID)
         LOGGER.d(TAG, f"on_ready: birthday_util.is_started: {birthday_util.is_running}")
+    else:
+        # If the birthday util is already set, skip setting it again
+        # This happens in the case of a reconnect
+        LOGGER.d(TAG, "on_ready: birthday_util is already started")
 
     LOGGER.d(TAG, "on_ready: done")
 

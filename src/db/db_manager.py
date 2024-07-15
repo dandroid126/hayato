@@ -40,7 +40,14 @@ CREATE_BIRTHDAY_TABLE: Final[str] = """
     )
 """
 
-DB_SCHEMA_VERSION: Final[int] = 2
+CREATE_TWEET_TABLE: Final[str] = """
+    CREATE TABLE IF NOT EXISTS tweets(
+        tweet_id INTEGER UNIQUE NOT NULL,
+        profile TEXT NOT NULL
+    )
+"""
+
+DB_SCHEMA_VERSION: Final[int] = 3
 
 
 class DbManager:
@@ -93,6 +100,21 @@ class DbManager:
 
         # Create birthdays table
         self.cursor.execute(CREATE_BIRTHDAY_TABLE)
+        self.connection.commit()
+
+    def upgrade_to_version_3(self):
+        """
+        DO NOT MODIFY THIS FUNCTION. It will break the database. If the database schema must change, add a new upgrade function and increment DB_SCHEMA_VERSION.
+
+        Upgrades the database schema to version 3 by adding the 'tweet' table.
+
+        Note: This function assumes that a database connection has already been established.
+        """
+        LOGGER.w(TAG, "upgrade_to_version_3(): upgrading to version 3")
+
+        # Create tweets table
+        self.cursor.execute(CREATE_TWEET_TABLE)
+        self.connection.commit()
 
     def set_db_schema_version(self, version: int) -> bool:
         """
@@ -141,15 +163,17 @@ class DbManager:
         """
 
         from_version = self.get_db_schema_version()
-
+        LOGGER.i(TAG, f"upgrade_db_schema(): from_version {from_version}; DB_SCHEMA_VERSION {DB_SCHEMA_VERSION}")
         while from_version < DB_SCHEMA_VERSION:
+            LOGGER.i(TAG, f"upgrade_db_schema(): upgrading from version {from_version} to version {from_version + 1}")
             upgrade = {
                 # When upgrading the db schema version, increase DB_SCHEMA_VERSION, then add a function here with what to do to upgrade to that version.
                 # The key is the db schema version being upgraded to.
                 # The value is the name of the upgrade function.
                 # Do not add parentheses, or it will get executed every time.
                 1: self.create_tables,
-                2: self.upgrade_to_version_2
+                2: self.upgrade_to_version_2,
+                3: self.upgrade_to_version_3
             }
 
             upgrade.get(from_version + 1, lambda: None)()

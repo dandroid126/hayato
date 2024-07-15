@@ -1,3 +1,5 @@
+set -e
+
 function cleanup() {
   docker stop hayato
   docker container rm --force hayato

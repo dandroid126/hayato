@@ -1,5 +1,5 @@
 import os
-from typing import Optional
+from typing import Optional, Final
 
 import discord
 from dateutil import parser
@@ -15,18 +15,34 @@ from src.constants import LOGGER
 from src.db.announcements.announcements_dao import announcements_dao
 from src.db.birthday.birthday_dao import birthday_dao
 from src.errors import LoggedRuntimeError
+from src.utils import common_utils
 from src.utils.announcements_util import AnnouncementsUtil
 from src.utils.birthday_util import BirthdayUtil
+from src.utils.twitter_util import TwitterUtil, TweetsConfig
 
 TAG = "client.py"
 
+# Environment
 load_dotenv()
-TOKEN = os.getenv('DISCORD_TOKEN')
-GUILD_ID = int(os.getenv('GUILD_ID'))
-BIRTHDAY_CHANNEL_ID = os.getenv('BIRTHDAY_CHANNEL_ID')
-BIRTHDAY_CHANNEL_ID = int(BIRTHDAY_CHANNEL_ID) if BIRTHDAY_CHANNEL_ID is not None else None
+TOKEN: Final[str] = os.getenv('DISCORD_TOKEN')
+GUILD_ID: Final[int] = int(os.getenv('GUILD_ID'))
+birthday_channel_id = os.getenv('BIRTHDAY_CHANNEL_ID')
+BIRTHDAY_CHANNEL_ID: Final[int] = int(birthday_channel_id) if birthday_channel_id is not None else None
+tweets = os.getenv('TWEETS')
+tweets = tweets.split(":") if tweets else None
+tweet_configs: list[TweetsConfig] = []
+for tweet in tweets if tweets else []:
+    parts = tweet.split(',')
+    if len(parts) == 2:
+        channel_id = common_utils.cast_to_int(parts[1])
+        if channel_id == -1:
+            continue
+        tweet_configs.append(TweetsConfig(parts[0], channel_id))
+
+# Utils
 announcements_util: Optional[AnnouncementsUtil] = None
 birthday_util: Optional[BirthdayUtil] = None
+twitter_util: Optional[TwitterUtil] = None
 
 guild_object = discord.Object(id=GUILD_ID)
 
@@ -255,11 +271,12 @@ async def on_ready():
     LOGGER.d(TAG, "on_ready:")
     global announcements_util
     global birthday_util
+    global twitter_util
     await tree.sync(guild=guild_object)
     if announcements_util is None:
         # Start waiting for announcement scheduled time
         announcements_util = AnnouncementsUtil(client)
-        LOGGER.d(TAG, f"on_ready: announcements_util.is_started: {announcements_util.is_running}")
+        LOGGER.d(TAG, f"on_ready: announcements_util.is_running: {announcements_util.is_running}")
     else:
         # If the announcements util is already set, skip setting it again
         # This happens in the case of a reconnect
@@ -268,11 +285,20 @@ async def on_ready():
     # If the birthdays channel is set, start waiting for birthdays
     if BIRTHDAY_CHANNEL_ID is not None and birthday_util is None:
         birthday_util = BirthdayUtil(client, BIRTHDAY_CHANNEL_ID)
-        LOGGER.d(TAG, f"on_ready: birthday_util.is_started: {birthday_util.is_running}")
+        LOGGER.d(TAG, f"on_ready: birthday_util.is_running: {birthday_util.is_running}")
     else:
         # If the birthday util is already set, skip setting it again
         # This happens in the case of a reconnect
         LOGGER.d(TAG, "on_ready: birthday_util is already started")
+
+    # If the tweet channel is set, start scraping for tweets
+    if len(tweet_configs) > 0 and twitter_util is None:
+        twitter_util = TwitterUtil(client, tweet_configs)
+        LOGGER.d(TAG, f"on_ready: twitter_util.is_running: {twitter_util.is_running}")
+    else:
+        # If the tweet util is already set, skip setting it again
+        # This happens in the case of a reconnect
+        LOGGER.d(TAG, "on_ready: twitter_util is already started")
 
     LOGGER.d(TAG, "on_ready: done")
 

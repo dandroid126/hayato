@@ -105,7 +105,10 @@ class TwitterUtil:
                 if tweet_record and not tweets_dao.get_tweet_by_id(tweet_record.tweet_id):
                     asyncio.run_coroutine_threadsafe(channel.send(tweet_record.get_vxtwitter_link()), loop).result()
                     tweets_dao.insert_tweet(tweet_record)
-            self.config_index = (self.config_index + 1) % len(self.tweets_configs)
+            if len(tweets) == 0:
+                LOGGER.d(TAG, f"Failed to get tweets from profile: {profile}. Try this profile again instead of incrementing the index.")
+            else:
+                self.config_index = (self.config_index + 1) % len(self.tweets_configs)
             signal_util.wait(self.get_sleep_time())
 
     @staticmethod

@@ -96,18 +96,31 @@ class TwitterUtil:
         db_manager = DbManager(constants.DB_PATH)
         tweets_dao = TweetDao(db_manager)
         while not signal_util.is_interrupted and self.is_running:
+            # Get the tweet config so we know where to post the tweets
             tweets_config = self.tweets_configs[self.config_index]
             profile = tweets_config.profile
             channel = self.client.get_channel(tweets_config.channel_id)
+
+            # Scrape the tweets
             tweets = asyncio.run_coroutine_threadsafe(TwitterUtil.get_tweets_from_profile(profile), loop).result()
+
+            # Get all tweets in the db in one read so we don't need to check them one at a time, causing lots of DB reads.
+            already_posted_tweets = tweets_dao.get_all_tweets()
+
+            # Process the tweets
             for tweet in tweets:
                 tweet_record: TweetRecord = TweetRecord.get_tweet_record_from_link(tweet)
-                if tweet_record and not tweets_dao.get_tweet_by_id(tweet_record.tweet_id):
+                if tweet_record and tweet_record.tweet_id not in already_posted_tweets:
+                    # If the tweet record exists and isn't in the list of already posted tweets, send the tweet to the channel and add it to the DB
                     asyncio.run_coroutine_threadsafe(channel.send(tweet_record.get_vxtwitter_link()), loop).result()
                     tweets_dao.insert_tweet(tweet_record)
+                    # Append the tweet to the list of already posted tweets so we don't send it again (just in case Twitter gives us the same tweet twice for whatever reason).
+                    already_posted_tweets.append(tweet_record)
             if len(tweets) == 0:
+                # Something went wrong. Try this profile again.
                 LOGGER.d(TAG, f"Failed to get tweets from profile: {profile}. Try this profile again instead of incrementing the index.")
             else:
+                # Successfully got tweets. Increment the index so we use the next profile next time the loop runs.
                 self.config_index = (self.config_index + 1) % len(self.tweets_configs)
             signal_util.wait(self.get_sleep_time())
 

@@ -35,5 +35,13 @@ class TweetDao:
             return TweetRecord(val[0], val[1])
         return None
 
+    def get_all_tweets(self) -> list[TweetRecord]:
+        query = "SELECT * FROM tweets"
+        LOGGER.i(TAG, f"getAllTweets(): executing {query}")
+        val = self.db_manager.cursor.execute(query).fetchall()
+        if val is not None:
+            return [TweetRecord(v[0], v[1]) for v in val]
+        return []
+
 
 tweet_dao = TweetDao(db_manager)

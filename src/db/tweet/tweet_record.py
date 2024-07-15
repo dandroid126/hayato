@@ -47,3 +47,10 @@ class TweetRecord:
             str: The link to the tweet as a vxtwitter link
         """
         return f"https://vxtwitter.com/{self.profile}/status/{self.tweet_id}"
+
+    def __eq__(self, other):
+        if isinstance(other, TweetRecord):
+            return self.profile == other.profile and self.tweet_id == other.tweet_id
+        elif isinstance(other, int):
+            return self.tweet_id == other
+        return False

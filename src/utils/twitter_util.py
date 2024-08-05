@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import threading
 from dataclasses import dataclass
 from types import MappingProxyType
@@ -8,7 +9,7 @@ from typing import Final
 
 import numpy
 from discord import Client
-from playwright.async_api import async_playwright
+from playwright.async_api import async_playwright, Response
 
 import src.constants as constants
 from src.constants import LOGGER
@@ -43,6 +44,7 @@ PROFILE_NAME_REPLACEMENT: Final[str] = "{{PROFILE_NAME}}"
 TWEET_ID_REPLACEMENT: Final[str] = "{{TWEET_ID}}"
 TWEET_URL_PATTERN: Final[str] = f"https://x.com/{PROFILE_NAME_REPLACEMENT}/status/{TWEET_ID_REPLACEMENT}"
 TWITTER_PROFILE_URL_PATTERN: Final[str] = f"https://x.com/{PROFILE_NAME_REPLACEMENT}"
+TWITTER_LOGIN_URL: Final[str] = "https://x.com/i/flow/login"
 
 
 class TwitterUtil:
@@ -51,7 +53,7 @@ class TwitterUtil:
         self.is_running = False
         self.client = client
         self.tweets_configs = tweets_configs
-        self.config_index = 0
+        self.config_index = 1
         self.rng = numpy.random.default_rng()
         self.start()
 
@@ -136,9 +138,9 @@ class TwitterUtil:
         Returns:
             list: list of tweets from profile as vxtwitter links
         """
-        _xhr_calls = []
+        _xhr_calls: list[Response] = []
 
-        def intercept_response(response):
+        def intercept_response(response: Response):
             """capture all background requests and save them"""
             # we can extract details from background requests
             if response.request.resource_type == XHR:
@@ -151,6 +153,15 @@ class TwitterUtil:
                 browser = await pw.chromium.launch()
                 context = await browser.new_context(viewport=VIEWPORT.copy())
                 page = await context.new_page()
+
+                # login
+                await page.goto(TWITTER_LOGIN_URL)
+                await page.fill('input[type="text"]', '*****')  # TODO: Replace with username
+                await page.locator("//span[text()='Next']").click()
+                await page.fill('input[type="password"]', '******')  # TODO: Replace with password
+                await page.locator("//span[text()='Log in']").click()
+                await page.wait_for_timeout(WAIT_TIME)
+
 
                 # enable background request intercepting:
                 page.on(RESPONSE, intercept_response)
@@ -169,7 +180,8 @@ class TwitterUtil:
                                     tweet_id = entry[ENTRY_ID].split('-')[1]
                                     tweet_url = TWEET_URL_PATTERN.replace(PROFILE_NAME_REPLACEMENT, profile_name).replace(TWEET_ID_REPLACEMENT, tweet_id)
                                     tweets.append(tweet_url)
-        except TimeoutError as e:
+        except Exception as e:
+            # TODO: make exception more specific.
             LOGGER.e(TAG, f"get_tweets_from_profile: TimeoutError", e)
         finally:
             if browser:

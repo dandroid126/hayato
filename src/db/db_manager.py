@@ -157,5 +157,13 @@ class DbManager:
 
         self.set_db_schema_version(DB_SCHEMA_VERSION)
 
+    def close(self):
+        """
+        Closes the database connection.
+        """
+        LOGGER.i(TAG, "close(): closing connection to SQLite DB")
+        self.cursor.close()
+        self.connection.close()
+
 
 db_manager = DbManager(constants.DB_PATH)

@@ -2,6 +2,7 @@ import asyncio
 import threading
 from asyncio import AbstractEventLoop
 from datetime import datetime, timedelta
+from typing import Optional
 
 import pytz
 from discord import Client
@@ -29,15 +30,21 @@ class BirthdayUtil:
 
     def start(self):
         self.is_running = True
-        loop = asyncio.get_running_loop()
+        loop = asyncio.new_event_loop()
         thread = threading.Thread(target=self._loop, args=(loop, ))
         thread.start()
 
     def stop(self):
         self.is_running = False
 
-    def _get_birthday_message(self, user_id: int) -> str:
-        return BIRTHDAY_MESSAGE_TEMPLATE.replace(BIRTHDAY_REPLACEMENT, self.client.get_user(user_id).mention)
+    def _get_birthday_message(self, user_id: int) -> Optional[str]:
+        LOGGER.d(TAG, f"_get_birthday_message: user_id: {user_id}")
+        user = self.client.get_user(user_id)
+        if user is not None:
+            return BIRTHDAY_MESSAGE_TEMPLATE.replace(BIRTHDAY_REPLACEMENT, user.mention)
+        else:
+            LOGGER.e(TAG, f"_get_birthday_message: user not found: {user_id}")
+            return None
 
     @staticmethod
     def _get_sleep_delay() -> int:
@@ -62,9 +69,16 @@ class BirthdayUtil:
             for birthday in birthdays:
                 LOGGER.d(TAG, f"birthday: {birthday}")
                 if birthday.date.strftime(DATE_FORMAT) == datetime.now().astimezone(BIRTHDAY_TIMEZONE).strftime(DATE_FORMAT) and birthday.last_wished_year < datetime.now().astimezone(BIRTHDAY_TIMEZONE).year:
-                    # TODO: add try/catch
-                    if self.channel is not None:
-                        asyncio.run_coroutine_threadsafe(self.channel.send(self._get_birthday_message(birthday.user_id)), loop).result()
-                        birthday_dao.update_last_wished_year(birthday.user_id, datetime.now().astimezone(BIRTHDAY_TIMEZONE).year)
+                    try:
+                        if self.channel is not None:
+                            birthday_message = self._get_birthday_message(birthday.user_id)
+                            if birthday_message is not None:
+                                asyncio.run_coroutine_threadsafe(self.channel.send(birthday_message), loop).result()
+                                birthday_dao.update_last_wished_year(birthday.user_id, datetime.now().astimezone(BIRTHDAY_TIMEZONE).year)
+                            else:
+                                LOGGER.e(TAG, f"_loop: failed to get birthday message for user: {birthday.user_id}.")
+                    except Exception as e:
+                        LOGGER.e(TAG, f"_loop: failed to send birthday message for user: {birthday.user_id}", e)
             signal_util.wait(self._get_sleep_delay())
+        self.stop()
         LOGGER.i(TAG, "BirthdaysUtil stopped")

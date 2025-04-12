@@ -256,7 +256,7 @@ async def on_ready():
     global announcements_util
     global birthday_util
     await tree.sync(guild=guild_object)
-    if announcements_util is None:
+    if announcements_util is None or not announcements_util.is_running:
         # Start waiting for announcement scheduled time
         announcements_util = AnnouncementsUtil(client)
         LOGGER.d(TAG, f"on_ready: announcements_util.is_started: {announcements_util.is_running}")
@@ -266,7 +266,7 @@ async def on_ready():
         LOGGER.d(TAG, "on_ready: announcements_util is already started")
 
     # If the birthdays channel is set, start waiting for birthdays
-    if BIRTHDAY_CHANNEL_ID is not None and birthday_util is None:
+    if BIRTHDAY_CHANNEL_ID is not None and (birthday_util is None or not birthday_util.is_running):
         birthday_util = BirthdayUtil(client, BIRTHDAY_CHANNEL_ID)
         LOGGER.d(TAG, f"on_ready: birthday_util.is_started: {birthday_util.is_running}")
     else:

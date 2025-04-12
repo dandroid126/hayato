@@ -25,7 +25,7 @@ class AnnouncementsUtil:
 
     def start(self):
         self.is_running = True
-        loop = asyncio.get_running_loop()
+        loop = asyncio.new_event_loop()
         thread = threading.Thread(target=self._loop, args=(loop, ))
         thread.start()
 
@@ -53,4 +53,5 @@ class AnnouncementsUtil:
                         asyncio.run_coroutine_threadsafe(channel.send(announcement.message, file=file), loop).result()
                         announcements_dao.delete_announcement_by_id(announcement.id)
             signal_util.wait(SLEEP_DELAY)
+        self.stop()
         LOGGER.i(TAG, "AnnouncementsUtil stopped")

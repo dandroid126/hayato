@@ -40,8 +40,11 @@ class BirthdayUtil:
     def _get_birthday_message(self, user_id: int) -> Optional[str]:
         LOGGER.d(TAG, f"_get_birthday_message: user_id: {user_id}")
         user = self.client.get_user(user_id)
+        LOGGER.d(TAG, f"_get_birthday_message: user: {user}")
         if user is not None:
-            return BIRTHDAY_MESSAGE_TEMPLATE.replace(BIRTHDAY_REPLACEMENT, user.mention)
+            message = BIRTHDAY_MESSAGE_TEMPLATE.replace(BIRTHDAY_REPLACEMENT, user.mention)
+            LOGGER.d(TAG, f"_get_birthday_message: message: {message}")
+            return message
         else:
             LOGGER.e(TAG, f"_get_birthday_message: user not found: {user_id}")
             return None

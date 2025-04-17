@@ -41,10 +41,19 @@ tree = app_commands.CommandTree(client)
 async def send_wrapper(sender: Interaction | GuildChannel, text: str, attachment: Optional[discord.Attachment] = None):
     LOGGER.d(TAG, f"send_wrapper: text: {text}, attachment: {attachment}")
     file = await attachment.to_file() if attachment is not None else MISSING
+    texts = []
+    while len(text) >= 2000:
+        texts.append(text[:2000])
+        text = text[2000:]
+    texts.append(text)
     if isinstance(sender, Interaction):
-        await sender.response.send_message(text, file=file)
+        await sender.response.send_message(texts[0], file=file)
+        for text in texts[1:]:
+            await sender.followup.send(text)
     elif isinstance(sender, GuildChannel):
-        await sender.send(text, file=file)
+        await sender.send(texts[0], file=file)
+        for text in texts[1:]:
+            await sender.send(text)
 
 
 def replace_line_breaks(text: str) -> str:
@@ -232,7 +241,7 @@ if BIRTHDAY_CHANNEL_ID is not None:
         birthdays = birthday_dao.get_all_birthdays()
         response = "Birthdays:\n"
         for birthday in birthdays:
-            response += f"username: {client.get_user(birthday.user_id)}: date: {birthday.date.strftime('%B %d')}\n"
+            response += f"username: {client.get_user(birthday.user_id)}: date: {birthday.date.strftime('%m/%d')}\n"
         await send_wrapper(interaction, response)
 
 

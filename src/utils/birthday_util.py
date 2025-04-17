@@ -30,7 +30,7 @@ class BirthdayUtil:
 
     def start(self):
         self.is_running = True
-        loop = asyncio.new_event_loop()
+        loop = asyncio.get_running_loop()
         thread = threading.Thread(target=self._loop, args=(loop, ))
         thread.start()
 

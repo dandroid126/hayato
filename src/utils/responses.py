@@ -2,7 +2,7 @@ import csv
 import os
 import random
 import re
-from typing import Optional
+from typing import Optional, Final
 
 from dotenv import load_dotenv
 
@@ -16,6 +16,7 @@ RESPONSES_FILE_PATH = os.getenv('RESPONSES_FILE_PATH')
 _keyword_lists = []
 _response_lists = []
 _last_known_good_file = None
+_COMMENT_CHARACTER: Final = "#"
 
 
 def load_responses_file():
@@ -29,7 +30,7 @@ def load_responses_file():
 
     try:
         with open(RESPONSES_FILE_PATH, "r") as csv_file:
-            csv_reader = csv.reader(csv_file, delimiter=',')
+            csv_reader = csv.reader(filter(lambda line: line[0] != _COMMENT_CHARACTER, csv_file), delimiter=',')
             for row in csv_reader:
                 _keyword_lists.append([parse_keyword(keyword) for keyword in row[0].split(";;")])
                 _response_lists.append([parse_response(response) for response in row[1].split(";;")])

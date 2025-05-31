@@ -25,6 +25,8 @@ TOKEN = os.getenv('DISCORD_TOKEN')
 GUILD_ID = int(os.getenv('GUILD_ID'))
 BIRTHDAY_CHANNEL_ID = os.getenv('BIRTHDAY_CHANNEL_ID')
 BIRTHDAY_CHANNEL_ID = int(BIRTHDAY_CHANNEL_ID) if BIRTHDAY_CHANNEL_ID is not None else None
+REQUESTS_CHANNEL_ID = os.getenv('REQUESTS_CHANNEL_ID')
+REQUESTS_CHANNEL_ID = int(REQUESTS_CHANNEL_ID) if REQUESTS_CHANNEL_ID is not None else None
 announcements_util: Optional[AnnouncementsUtil] = None
 birthday_util: Optional[BirthdayUtil] = None
 
@@ -38,7 +40,7 @@ client = discord.Client(intents=intents)
 tree = app_commands.CommandTree(client)
 
 
-async def send_wrapper(sender: Interaction | GuildChannel, text: str, attachment: Optional[discord.Attachment] = None):
+async def send_wrapper(sender: Interaction | GuildChannel, text: str, attachment: Optional[discord.Attachment] = None, ephemeral: Optional[bool] = False):
     LOGGER.d(TAG, f"send_wrapper: text: {text}, attachment: {attachment}")
     file = await attachment.to_file() if attachment is not None else MISSING
     texts = []
@@ -47,7 +49,7 @@ async def send_wrapper(sender: Interaction | GuildChannel, text: str, attachment
         text = text[2000:]
     texts.append(text)
     if isinstance(sender, Interaction):
-        await sender.response.send_message(texts[0], file=file)
+        await sender.response.send_message(texts[0], file=file, ephemeral=ephemeral)
         for text in texts[1:]:
             await sender.followup.send(text)
     elif isinstance(sender, GuildChannel):
@@ -243,6 +245,19 @@ if BIRTHDAY_CHANNEL_ID is not None:
         for birthday in birthdays:
             response += f"username: {client.get_user(birthday.user_id)}: date: {birthday.date.strftime('%m/%d')}\n"
         await send_wrapper(interaction, response)
+
+if REQUESTS_CHANNEL_ID is not None:
+    @tree.command(
+        name="request",
+        description="Have HAYATO send a request that only you and the Sensei can see.",
+        guild=guild_object
+    )
+    async def send_request(interaction: discord.Interaction, request: str):
+        LOGGER.d(TAG, f"request:: {request}")
+        channel = client.get_channel(REQUESTS_CHANNEL_ID)
+        message = f"user: {interaction.user.name}, request: {request}"
+        await send_wrapper(channel, message)
+        await send_wrapper(interaction, "OHAYAHO!! THE SENSEI HAVE RECEIVED YOUR REQUEST!!!", ephemeral=True)
 
 
 @client.event

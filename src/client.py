@@ -27,6 +27,8 @@ BIRTHDAY_CHANNEL_ID = os.getenv('BIRTHDAY_CHANNEL_ID')
 BIRTHDAY_CHANNEL_ID = int(BIRTHDAY_CHANNEL_ID) if BIRTHDAY_CHANNEL_ID is not None else None
 REQUESTS_CHANNEL_ID = os.getenv('REQUESTS_CHANNEL_ID')
 REQUESTS_CHANNEL_ID = int(REQUESTS_CHANNEL_ID) if REQUESTS_CHANNEL_ID is not None else None
+REQUESTS_USERS = os.getenv('REQUESTS_USERS')
+REQUESTS_USERS = REQUESTS_USERS.split(",") if REQUESTS_USERS else None
 announcements_util: Optional[AnnouncementsUtil] = None
 birthday_util: Optional[BirthdayUtil] = None
 
@@ -104,7 +106,7 @@ async def schedule_announcement(interaction: discord.Interaction, time: str, cha
         announcement = announcements_dao.schedule_announcement(parsed_time, channel.id, message, attachment.to_dict() if attachment else None)
         await send_wrapper(interaction, f"Will send the message at time: {parsed_time}. Announcement details: {announcement}")
     except ValueError as e:
-        LOGGER.e(TAG, e, f"schedule_announcement: failed to parse time. time provided: {time}")
+        LOGGER.e(TAG, f"schedule_announcement: failed to parse time. time provided: {time}", e)
         await send_wrapper(interaction, f"Was not able to parse the provided time: {time}. Check the entered value and try again. Announcement was not scheduled.")
 
 
@@ -193,7 +195,7 @@ if BIRTHDAY_CHANNEL_ID is not None:
             birthday = birthday_dao.learn_birthday(user_id, parsed_date)
             await send_wrapper(interaction, "I will remember that your birthday is on this day: " + birthday.date.strftime("%B %d"))
         except ValueError as e:
-            LOGGER.e(TAG, e, f"learn_birthday: failed to parse date. date provided: {date}")
+            LOGGER.e(TAG, f"learn_birthday: failed to parse date. date provided: {date}", e)
             await send_wrapper(interaction, f"Sorry, I was not able to understand the date: '{date}'. Please try again in the format 'January 1st'.")
 
 
@@ -213,7 +215,7 @@ if BIRTHDAY_CHANNEL_ID is not None:
             birthday = birthday_dao.learn_birthday(user_id, parsed_date)
             await send_wrapper(interaction, f"I will remember that {user.mention}'s birthday is on this day: " + birthday.date.strftime("%B %d"))
         except ValueError as e:
-            LOGGER.e(TAG, e, f"learn_birthday: failed to parse date. date provided: {date}")
+            LOGGER.e(TAG, f"learn_birthday: failed to parse date. date provided: {date}", e)
             await send_wrapper(interaction, f"Sorry, I was not able to understand the date: '{date}'. Please try again in the format 'January 1st'.")
 
 
@@ -256,17 +258,33 @@ if REQUESTS_CHANNEL_ID is not None:
         LOGGER.d(TAG, f"request:: {request}")
         channel = client.get_channel(REQUESTS_CHANNEL_ID)
         message = f"user: {interaction.user.name}, request: {request}"
+        if REQUESTS_USERS:
+            for role_or_user_id in REQUESTS_USERS:
+                if role_or_user_id.startswith('&'):
+                    # ID is a role ID
+                    role_id = int(role_or_user_id[1:])
+                    guild = client.get_guild(GUILD_ID)
+                    role = guild.get_role(role_id) if guild else None
+                    message += f" {role.mention}" if role else ""
+                else:
+                    # ID is a user ID
+                    try:
+                        user_id = int(role_or_user_id)
+                        user = client.get_user(user_id)
+                        message += f" {user.mention}"
+                    except ValueError as e:
+                        LOGGER.e(TAG, "'id' could not be casts to an int to make it into a user ID.", e)
         await send_wrapper(channel, message)
         await send_wrapper(interaction, "OHAYAHO!! THE SENSEI HAVE RECEIVED YOUR REQUEST!!!", ephemeral=True)
 
 
 @client.event
 async def on_message(message: discord.Message):
-    if message.guild.id != GUILD_ID:
-        LOGGER.d(TAG, f"on_message: message.guild.id: {message.guild.id} not equal to GUILD_ID: {GUILD_ID}")
-        return
     if message.author == client.user:
         LOGGER.d(TAG, f"on_message: message.author == client.user: {message.author == client.user}")
+        return
+    if message.guild.id != GUILD_ID:
+        LOGGER.d(TAG, f"on_message: message.guild.id: {message.guild.id} not equal to GUILD_ID: {GUILD_ID}")
         return
     msg = message.content
     response = responses.get_response(msg)

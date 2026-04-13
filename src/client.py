@@ -1,10 +1,12 @@
 import os
 from typing import Optional
 
+import aiohttp
 import discord
 from dateutil import parser
 from discord import app_commands
 from discord.abc import GuildChannel
+from discord.ext import tasks
 from discord.interactions import Interaction
 from discord.utils import MISSING
 from dotenv import load_dotenv
@@ -292,6 +294,19 @@ async def on_message(message: discord.Message):
         await message.channel.send(response)
 
 
+UPTIME_KUMA_PUSH_URL = os.getenv('UPTIME_KUMA_PUSH_URL')
+
+
+@tasks.loop(seconds=60)
+async def heartbeat():
+    if UPTIME_KUMA_PUSH_URL and client.is_ready() and not client.is_closed():
+        try:
+            async with aiohttp.ClientSession() as session:
+                await session.get(UPTIME_KUMA_PUSH_URL)
+        except Exception as e:
+            LOGGER.w(TAG, f"heartbeat:: failed to push to Uptime Kuma: {e}")
+
+
 @client.event
 async def on_ready():
     LOGGER.d(TAG, "on_ready:")
@@ -315,6 +330,9 @@ async def on_ready():
         # If the birthday util is already set, skip setting it again
         # This happens in the case of a reconnect
         LOGGER.d(TAG, "on_ready: birthday_util is already started")
+
+    if not heartbeat.is_running():
+        heartbeat.start()
 
     LOGGER.d(TAG, "on_ready: done")
 

@@ -32,8 +32,11 @@ def load_responses_file():
         with open(RESPONSES_FILE_PATH, "r") as csv_file:
             csv_reader = csv.reader(filter(lambda line: line[0] != _COMMENT_CHARACTER, csv_file), delimiter=',')
             for row in csv_reader:
-                _keyword_lists.append([parse_keyword(keyword) for keyword in row[0].split(";;")])
-                _response_lists.append([parse_response(response) for response in row[1].split(";;")])
+                try:
+                    _keyword_lists.append([parse_keyword(keyword) for keyword in row[0].split(";;")])
+                    _response_lists.append([parse_response(response) for response in row[1].split(";;")])
+                except ValueError as e:
+                    LOGGER.e(TAG, f"Error in this row: {row}", e)
             csv_file.seek(0)
             _last_known_good_file = csv_file.read().replace("\\", "\\\\\\")
         LOGGER.i(TAG, "Successfully loaded responses file.")
